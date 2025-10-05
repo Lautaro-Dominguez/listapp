@@ -6,9 +6,9 @@
         <span class="app-title">ListAPP</span>
       </div>
       <nav class="nav">
-        <a class="nav-link" href="#">Mis listas</a>
+        <RouterLink class="nav-link" to="/">Mis listas</RouterLink>
         <a class="nav-link" href="#">Mis productos</a>
-        <a class="nav-link" href="#">Mi despensa</a>
+        <RouterLink class="nav-link" to="/despensa">Mi despensa</RouterLink>
       </nav>
       <div class="profile-section">
         <div class="profile-img">

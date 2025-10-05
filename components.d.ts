@@ -9,7 +9,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     CollapsibleList: typeof import('./src/components/lists/CollapsibleList.vue')['default']
-    HelloWorld: typeof import('./src/components/HelloWorld.vue')['default']
+    ItemQtyActions: typeof import('./src/components/ItemQtyActions.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }
