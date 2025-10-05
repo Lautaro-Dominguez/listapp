@@ -52,7 +52,7 @@ const toggleProfileWindow = () => {
 
 .base-layout {
   min-height: 100vh;
-  background: #F3FDEB;
+  background: #e8f4e1;
   font-family: 'Crete Round', serif;
 }
 .header {
