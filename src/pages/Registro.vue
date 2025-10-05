@@ -22,6 +22,13 @@
             </div>
             
             <v-text-field
+                v-model="apodo"
+                label="Apodo"
+                variant="outlined"
+                class="email-field"
+            ></v-text-field>
+            
+            <v-text-field
                 v-model="email"
                 label="Correo electrónico"
                 type="email"
@@ -69,6 +76,7 @@ import BaseLayout from '@/layouts/BaseLayout.vue'
 
 const nombre = ref('')
 const apellido = ref('')
+const apodo = ref('')
 const email = ref('')
 const password = ref('')
 const repeatPassword = ref('')
@@ -85,7 +93,7 @@ const toggleRepeatPasswordVisibility = () => {
 
 const handleRegister = () => {
     // Sin funcionalidad por ahora
-    console.log('Registro:', { nombre: nombre.value, apellido: apellido.value, email: email.value })
+    console.log('Registro:', { nombre: nombre.value, apellido: apellido.value, apodo: apodo.value, email: email.value })
 }
 </script>
 
