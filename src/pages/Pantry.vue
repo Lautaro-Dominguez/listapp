@@ -1,66 +1,69 @@
 <template>
-  <div class="despensa-wrapper">
-    <section class="section">
-      <h2 class="section-title">Mi Despensa</h2>
-      <div v-if="categorias.length === 0" class="empty-categories">
-        No hay categorías
+  <BaseLayout>
+    <div class="despensa-wrapper">
+      <section class="section">
+        <h2 class="section-title">Mi Despensa</h2>
+        <div v-if="categorias.length === 0" class="empty-categories">
+          No hay categorías
+        </div>
+        <div v-else class="grid">
+          <CollapsibleList
+            v-for="cat in categorias"
+            :key="cat.id"
+            :title="cat.title"
+            :items="cat.items"
+            v-model:collapsed="cat.collapsed"
+            @add="() => addItem(cat)"
+            @remove="(item) => removeItem(cat, item)"
+            @edit="() => editCategoria(cat)"
+            item-key-field="id"
+          >
+            <template #item-left="{ item }">
+              <span class="emoji">{{ item.emoji || cat.emoji }}</span>
+            </template>
+            <template #item-right="{ item }">
+              <ItemQtyActions
+                :item="item as ItemQty"
+                :onInc="incQty"
+                :onDec="decQty"
+                :onRemove="(item) => removeItem(cat, item)"
+              />
+            </template>
+            <template #empty>No hay productos</template>
+          </CollapsibleList>
+        </div>
+      </section>
+      <button class="fab-add-category" @click="showAddCat = true">
+        <v-icon size="22" icon="mdi-plus" color="black" style="margin-right:8px" />
+        Nueva categoría
+      </button>
+      <div v-if="showAddCat" class="modal-bg">
+        <div class="modal">
+          <h3>Nueva categoría</h3>
+          <label>Nombre:<input v-model="newCatName" placeholder="Nombre de la categoría" /></label>
+          <div class="modal-actions">
+            <button @click="addCategoria">Agregar</button>
+            <button @click="showAddCat = false">Cancelar</button>
+          </div>
+        </div>
       </div>
-      <div v-else class="grid">
-        <CollapsibleList
-          v-for="cat in categorias"
-          :key="cat.id"
-          :title="cat.title"
-          :items="cat.items"
-          v-model:collapsed="cat.collapsed"
-          @add="() => addItem(cat)"
-          @remove="(item) => removeItem(cat, item)"
-          @edit="() => editCategoria(cat)"
-          item-key-field="id"
-        >
-          <template #item-left="{ item }">
-            <span class="emoji">{{ item.emoji || cat.emoji }}</span>
-          </template>
-          <template #item-right="{ item }">
-            <ItemQtyActions
-              :item="item as ItemQty"
-              :onInc="incQty"
-              :onDec="decQty"
-              :onRemove="(item) => removeItem(cat, item)"
-            />
-          </template>
-          <template #empty>No hay productos</template>
-        </CollapsibleList>
-      </div>
-    </section>
-    <button class="fab-add-category" @click="showAddCat = true">
-      <v-icon size="22" icon="mdi-plus" color="black" style="margin-right:8px" />
-      Nueva categoría
-    </button>
-    <div v-if="showAddCat" class="modal-bg">
-      <div class="modal">
-        <h3>Nueva categoría</h3>
-        <label>Nombre:<input v-model="newCatName" placeholder="Nombre de la categoría" /></label>
-        <div class="modal-actions">
-          <button @click="addCategoria">Agregar</button>
-          <button @click="showAddCat = false">Cancelar</button>
+      <div v-if="showAddProduct" class="modal-bg">
+        <div class="modal">
+          <h3>Nuevo producto</h3>
+          <label>Nombre:<input v-model="newProductName" placeholder="Nombre del producto" /></label>
+          <label>Emoji:<input v-model="newProductEmoji" maxlength="2" placeholder="Emoji" style="text-align:center;" /></label>
+          <div class="modal-actions">
+            <button @click="confirmAddProduct">Agregar</button>
+            <button @click="cancelAddProduct">Cancelar</button>
+          </div>
         </div>
       </div>
     </div>
-    <div v-if="showAddProduct" class="modal-bg">
-      <div class="modal">
-        <h3>Nuevo producto</h3>
-        <label>Nombre:<input v-model="newProductName" placeholder="Nombre del producto" /></label>
-        <label>Emoji:<input v-model="newProductEmoji" maxlength="2" placeholder="Emoji" style="text-align:center;" /></label>
-        <div class="modal-actions">
-          <button @click="confirmAddProduct">Agregar</button>
-          <button @click="cancelAddProduct">Cancelar</button>
-        </div>
-      </div>
-    </div>
-  </div>
+  </BaseLayout>
 </template>
 
 <script setup lang="ts">
+import BaseLayout from '@/layouts/BaseLayout.vue'
 import CollapsibleList from '@/components/lists/CollapsibleList.vue'
 import ItemQtyActions from '@/components/ItemQtyActions.vue'
 import { ref, reactive } from 'vue'
