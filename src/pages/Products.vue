@@ -17,7 +17,7 @@
             :title="cat.title"
             :items="cat.items"
             v-model:collapsed="cat.collapsed"
-            @add="() => openAddProduct(cat.title === 'Frutas' ? 'frutas' : cat.title === 'Verduras' ? 'verduras' : cat.id)"
+            @add="() => openAddProduct(cat.id)"
             @edit="() => editCategory(cat)"
             @remove="(item) => removeItem(cat, item)"
           >
@@ -52,14 +52,6 @@ import { ref } from 'vue'
 
 type Item = { id: number; label: string; emoji: string }
 
-type ItemQty = Item & { qty: number }
-
-// Mis Productos
-const collapsedFrutas = ref(false)
-const collapsedVerduras = ref(false)
-const collapsedPerfumeria = ref(true)
-const collapsedConservas = ref(true)
-
 const frutas = ref<Item[]>([
 
   { id: 1, label: 'Manzana', emoji: '🍎' },
@@ -82,17 +74,19 @@ const categories = ref([
   { id: 4, title: 'Conservas', emoji: '🥫', items: [], collapsed: true },
 ])
 const showAddCategory = ref(false)
-const addProductTarget = ref<'frutas' | 'verduras' | null>(null)
+const addProductTarget = ref<number | null>(null)
+const showAddProduct = ref(false)
 
-function openAddProduct(target: 'frutas' | 'verduras') {
-  addProductTarget.value = target
+function openAddProduct(categoryId: number) {
+  addProductTarget.value = categoryId
   showAddProduct.value = true
 }
 function confirmAddProductForm({ name, emoji }: { name: string; emoji: string }) {
-  if (!addProductTarget.value || !name) return
-  const list = addProductTarget.value === 'frutas' ? frutas.value : verduras.value
-  const nextId = Math.max(0, ...list.map(i => i.id)) + 1
-  list.push({ id: nextId, label: name, emoji: emoji || '🆕' })
+  if (addProductTarget.value === null || !name) return
+  const cat = categories.value.find(c => c.id === addProductTarget.value)
+  if (!cat) return
+  const nextId = Math.max(0, ...cat.items.map((i: any) => i.id)) + 1
+  cat.items.push({ id: nextId, label: name, emoji: emoji || '🆕' })
   showAddProduct.value = false
   addProductTarget.value = null
 }
@@ -120,7 +114,7 @@ function cancelAddCategory() {
 function editCategory(cat: any) { console.log('Editar categoría:', cat.title) }
 function removeItem(cat: any, item: Item) {
   const index = categories.value.findIndex(c => c.id === cat.id)
-  if (index !== -1) {
+  if (index !== -1 && categories.value[index]?.items) {
     categories.value[index].items = categories.value[index].items.filter(i => i.id !== item.id)
   }
 }

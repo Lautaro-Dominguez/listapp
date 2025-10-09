@@ -3,7 +3,12 @@
     <div class="modal">
       <h3>Nuevo producto</h3>
       <label>Nombre:<input v-model="localName" placeholder="Nombre del producto" /></label>
-      <label>Emoji:<input v-model="localEmoji" maxlength="2" placeholder="Emoji" style="text-align:center;" /></label>
+      <label>Emoji:
+        <select v-model="localEmoji" class="emoji-select">
+          <option value="" disabled>Elige un emoji</option>
+          <option v-for="emoji in emojiList" :key="emoji" :value="emoji">{{ emoji }} {{ emojiLabel[emoji] }}</option>
+        </select>
+      </label>
       <div class="modal-actions">
         <button @click="onAdd">Agregar</button>
         <button @click="$emit('cancel')">Cancelar</button>
@@ -23,6 +28,50 @@ const emit = defineEmits(['add', 'cancel'])
 
 const localName = ref(props.name)
 const localEmoji = ref(props.emoji)
+
+const emojiList = [
+  '🍎', // Manzana
+  '🍌', // Banana
+  '🍊', // Naranja
+  '🍐', // Pera
+  '🥕', // Zanahoria
+  '🥬', // Lechuga
+  '🍅', // Tomate
+  '🥔', // Papa
+  '🧴', // Perfumería
+  '🥫', // Conservas
+  '🍞', // Pan
+  '🥛', // Leche
+  '🍗', // Pollo
+  '🍫', // Chocolate
+  '🍪', // Galletita
+  '🧀', // Queso
+  '🍕', // Pizza
+  '🍔', // Hamburguesa
+  '🍟', // Papas fritas
+  '🍣', // Sushi
+  '🍰', // Torta
+  '🍦', // Helado
+  '🍿', // Pochoclo
+  '🧃', // Jugo
+  '🧻', // Papel
+  '🧼', // Jabón
+  '🧽', // Esponja
+  '🧊', // Hielo
+  '🧂', // Sal
+  '🧋', // Té/Bebida
+  '🆕'  // Otro
+]
+const emojiLabel: Record<string, string> = {
+  '🍎': 'Manzana', '🍌': 'Banana', '🍊': 'Naranja', '🍐': 'Pera',
+  '🥕': 'Zanahoria', '🥬': 'Lechuga', '🍅': 'Tomate', '🥔': 'Papa',
+  '🧴': 'Perfumería', '🥫': 'Conservas', '🍞': 'Pan', '🥛': 'Leche',
+  '🍗': 'Pollo', '🍫': 'Chocolate', '🍪': 'Galletita', '🧀': 'Queso',
+  '🍕': 'Pizza', '🍔': 'Hamburguesa', '🍟': 'Papas fritas', '🍣': 'Sushi',
+  '🍰': 'Torta', '🍦': 'Helado', '🍿': 'Pochoclo', '🧃': 'Jugo',
+  '🧻': 'Papel', '🧼': 'Jabón', '🧽': 'Esponja', '🧊': 'Hielo',
+  '🧂': 'Sal', '🧋': 'Té/Bebida', '🆕': 'Otro'
+}
 
 watch(() => props.name, (val) => { localName.value = val })
 watch(() => props.emoji, (val) => { localEmoji.value = val })
@@ -65,6 +114,19 @@ function onAdd() {
   color: #222;
   background: #fff;
 }
+.emoji-select {
+  font-size: 18px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1.5px solid #bbb;
+  background: #fff;
+  margin-top: 6px;
+  width: 100%;
+  cursor: pointer;
+}
+.emoji-select:focus {
+  border: 1.5px solid #888;
+}
 .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 8px; }
 .modal-actions button {
   padding: 6px 16px;
@@ -80,4 +142,3 @@ function onAdd() {
   color: #fff;
 }
 </style>
-
