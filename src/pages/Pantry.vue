@@ -37,26 +37,17 @@
         <v-icon size="22" icon="mdi-plus" color="black" style="margin-right:8px" />
         Nueva categoría
       </button>
-      <div v-if="showAddCat" class="modal-bg">
-        <div class="modal">
-          <h3>Nueva categoría</h3>
-          <label>Nombre:<input v-model="newCatName" placeholder="Nombre de la categoría" /></label>
-          <div class="modal-actions">
-            <button @click="addCategoria">Agregar</button>
-            <button @click="showAddCat = false">Cancelar</button>
-          </div>
-        </div>
+      <div v-if="showAddCat">
+        <NewCategoryForm
+          @add="confirmAddCategoryForm"
+          @cancel="cancelAddCategory"
+        />
       </div>
-      <div v-if="showAddProduct" class="modal-bg">
-        <div class="modal">
-          <h3>Nuevo producto</h3>
-          <label>Nombre:<input v-model="newProductName" placeholder="Nombre del producto" /></label>
-          <label>Emoji:<input v-model="newProductEmoji" maxlength="2" placeholder="Emoji" style="text-align:center;" /></label>
-          <div class="modal-actions">
-            <button @click="confirmAddProduct">Agregar</button>
-            <button @click="cancelAddProduct">Cancelar</button>
-          </div>
-        </div>
+      <div v-if="showAddProduct">
+        <NewProductForm
+          @add="confirmAddProductForm"
+          @cancel="cancelAddProduct"
+        />
       </div>
     </div>
   </BaseLayout>
@@ -66,6 +57,8 @@
 import BaseLayout from '@/layouts/BaseLayout.vue'
 import CollapsibleList from '@/components/lists/CollapsibleList.vue'
 import ItemQtyActions from '@/components/ItemQtyActions.vue'
+import NewProductForm from '@/components/NewProductForm.vue'
+import NewCategoryForm from '@/components/NewCategoryForm.vue'
 import { ref, reactive } from 'vue'
 
 type Item = { id: number; label: string; emoji?: string }
@@ -85,8 +78,6 @@ const newCatName = ref('')
 const newCatEmoji = ref('')
 
 const showAddProduct = ref(false)
-const newProductName = ref('')
-const newProductEmoji = ref('')
 let addProductCat: Categoria | null = null
 
 function nextCatId() {
@@ -96,43 +87,43 @@ function nextItemId(cat: Categoria) {
   return Math.max(0, ...cat.items.map(i => i.id)) + 1
 }
 
-function addCategoria() {
-  if (!newCatName.value.trim()) return
+function confirmAddCategoryForm({ name, emoji }: { name: string; emoji: string }) {
+  if (!name) return
   categorias.push({
     id: nextCatId(),
-    title: newCatName.value.trim(),
-    emoji: newCatEmoji.value.trim() || '📦',
+    title: name,
+    emoji: emoji || '📦',
     items: [],
     collapsed: false,
   })
+  showAddCat.value = false
   newCatName.value = ''
   newCatEmoji.value = ''
+}
+function cancelAddCategory() {
   showAddCat.value = false
+  newCatName.value = ''
+  newCatEmoji.value = ''
 }
 
 function openAddProduct(cat: Categoria) {
   addProductCat = cat
-  newProductName.value = ''
-  newProductEmoji.value = ''
   showAddProduct.value = true
 }
-function confirmAddProduct() {
-  if (!addProductCat || !newProductName.value.trim()) return
+function confirmAddProductForm({ name, emoji }: { name: string; emoji: string }) {
+  if (!addProductCat || !name) return
   addProductCat.items.push({
     id: nextItemId(addProductCat),
-    label: newProductName.value.trim(),
+    label: name,
     qty: 1,
-    emoji: newProductEmoji.value.trim() || '🛒',
+    emoji: emoji || '🛒',
   })
   showAddProduct.value = false
-  newProductName.value = ''
-  newProductEmoji.value = ''
   addProductCat = null
 }
+
 function cancelAddProduct() {
   showAddProduct.value = false
-  newProductName.value = ''
-  newProductEmoji.value = ''
   addProductCat = null
 }
 

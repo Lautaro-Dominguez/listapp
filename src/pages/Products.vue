@@ -3,43 +3,39 @@
     <div class="products-wrapper">
       <section class="section">
         <h2 class="section-title">Mis Productos</h2>
-        <div v-if="productos.length === 0" class="empty-products">
+        <button class="fab-add-category" @click="showAddCategory = true">
+          <v-icon size="22" icon="mdi-plus" color="black" style="margin-right:8px" />
+          Nueva categoría
+        </button>
+        <div v-if="categories.length === 0" class="empty-products">
           No hay productos
         </div>
         <div v-else class="grid">
           <CollapsibleList
-            title="Frutas"
-            :items="frutas"
-            v-model:collapsed="collapsedFrutas"
-            @add="addFruta"
-            @edit="editFrutas"
-            @remove="removeFruta"
+            v-for="cat in categories"
+            :key="cat.id"
+            :title="cat.title"
+            :items="cat.items"
+            v-model:collapsed="cat.collapsed"
+            @add="() => openAddProduct(cat.title === 'Frutas' ? 'frutas' : cat.title === 'Verduras' ? 'verduras' : cat.id)"
+            @edit="() => editCategory(cat)"
+            @remove="(item) => removeItem(cat, item)"
           >
             <template #item-left="{ item }">
-              <span class="emoji">{{ item.emoji }}</span>
+              <span class="emoji">{{ item.emoji || cat.emoji }}</span>
             </template>
           </CollapsibleList>
-          <CollapsibleList
-            title="Verduras"
-            :items="verduras"
-            v-model:collapsed="collapsedVerduras"
-            @add="addVerdura"
-            @edit="editVerduras"
-            @remove="removeVerdura"
-          >
-            <template #item-left="{ item }">
-              <span class="emoji">{{ item.emoji }}</span>
-            </template>
-          </CollapsibleList>
-          <CollapsibleList
-            title="Perfumería"
-            :items="[]"
-            v-model:collapsed="collapsedPerfumeria"
+        </div>
+        <div v-if="showAddCategory">
+          <NewCategoryForm
+            @add="confirmAddCategoryForm"
+            @cancel="cancelAddCategory"
           />
-          <CollapsibleList
-            title="Conservas"
-            :items="[]"
-            v-model:collapsed="collapsedConservas"
+        </div>
+        <div v-if="showAddProduct">
+          <NewProductForm
+            @add="confirmAddProductForm"
+            @cancel="cancelAddProduct"
           />
         </div>
       </section>
@@ -50,6 +46,8 @@
 <script setup lang="ts">
 import BaseLayout from "@/layouts/BaseLayout.vue";
 import CollapsibleList from '@/components/lists/CollapsibleList.vue'
+import NewProductForm from '@/components/NewProductForm.vue'
+import NewCategoryForm from '@/components/NewCategoryForm.vue'
 import { ref } from 'vue'
 
 type Item = { id: number; label: string; emoji: string }
@@ -77,22 +75,55 @@ const verduras = ref<Item[]>([
  { id: 4, label: 'Papa',      emoji: '🥔' },
 ])
 
-const productos = ref<Item[]>([...frutas.value, ...verduras.value ])
+const categories = ref([
+  { id: 1, title: 'Frutas', emoji: '🍎', items: frutas.value, collapsed: false },
+  { id: 2, title: 'Verduras', emoji: '🥬', items: verduras.value, collapsed: false },
+  { id: 3, title: 'Perfumería', emoji: '🧴', items: [], collapsed: true },
+  { id: 4, title: 'Conservas', emoji: '🥫', items: [], collapsed: true },
+])
+const showAddCategory = ref(false)
+const addProductTarget = ref<'frutas' | 'verduras' | null>(null)
 
-function addFruta() {
-  const nextId = Math.max(0, ...frutas.value.map(i => i.id)) + 1
-  frutas.value.push({ id: nextId, label: 'Nueva fruta', emoji: '🆕' })
+function openAddProduct(target: 'frutas' | 'verduras') {
+  addProductTarget.value = target
+  showAddProduct.value = true
 }
-function editFrutas() { console.log('Editar categoría: Frutas') }
-function removeFruta(item: Item) { frutas.value = frutas.value.filter(i => i.id !== item.id) }
-
-function addVerdura() {
-  const nextId = Math.max(0, ...verduras.value.map(i => i.id)) + 1
-  verduras.value.push({ id: nextId, label: 'Nueva verdura', emoji: '🆕' })
+function confirmAddProductForm({ name, emoji }: { name: string; emoji: string }) {
+  if (!addProductTarget.value || !name) return
+  const list = addProductTarget.value === 'frutas' ? frutas.value : verduras.value
+  const nextId = Math.max(0, ...list.map(i => i.id)) + 1
+  list.push({ id: nextId, label: name, emoji: emoji || '🆕' })
+  showAddProduct.value = false
+  addProductTarget.value = null
 }
-function editVerduras() { console.log('Editar categoría: Verduras') }
-function removeVerdura(item: Item) { verduras.value = verduras.value.filter(i => i.id !== item.id) }
+function cancelAddProduct() {
+  showAddProduct.value = false
+  addProductTarget.value = null
+}
 
+function confirmAddCategoryForm({ name, emoji }: { name: string; emoji: string }) {
+  if (!name) return
+  const nextId = Math.max(...categories.value.map(c => c.id), 0) + 1
+  categories.value.push({
+    id: nextId,
+    title: name,
+    emoji: emoji || '🆕',
+    items: [],
+    collapsed: false,
+  })
+  showAddCategory.value = false
+}
+function cancelAddCategory() {
+  showAddCategory.value = false
+}
+
+function editCategory(cat: any) { console.log('Editar categoría:', cat.title) }
+function removeItem(cat: any, item: Item) {
+  const index = categories.value.findIndex(c => c.id === cat.id)
+  if (index !== -1) {
+    categories.value[index].items = categories.value[index].items.filter(i => i.id !== item.id)
+  }
+}
 
 </script>
 
@@ -128,5 +159,26 @@ function removeVerdura(item: Item) { verduras.value = verduras.value.filter(i =>
   font-size: 20px;
   font-style: italic;
   margin: 32px 0 24px 0;
+}
+.fab-add-category {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  background: #fff;
+  color: #000;
+  border: none;
+  border-radius: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  padding: 12px 22px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: box-shadow 0.2s;
+}
+.fab-add-category:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.28);
 }
 </style>

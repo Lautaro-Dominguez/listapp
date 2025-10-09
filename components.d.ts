@@ -11,6 +11,8 @@ declare module 'vue' {
     CollapsibleList: typeof import('./src/components/lists/CollapsibleList.vue')['default']
     DirectAccess: typeof import('./src/components/DirectAccess.vue')['default']
     ItemQtyActions: typeof import('./src/components/ItemQtyActions.vue')['default']
+    NewCategoryForm: typeof import('./src/components/NewCategoryForm.vue')['default']
+    NewProductForm: typeof import('./src/components/NewProductForm.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
   }
