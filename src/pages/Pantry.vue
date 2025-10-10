@@ -16,6 +16,7 @@
             @add="() => addItem(cat)"
             @remove="(item) => removeItem(cat, item)"
             @edit="() => editCategoria(cat)"
+            @update:title="(newTitle) => updateCategoriaTitle(cat, newTitle)"
             item-key-field="id"
           >
             <template #item-left="{ item }">
@@ -135,6 +136,9 @@ function removeItem(cat: Categoria, item: ItemQty) {
 }
 function editCategoria(cat: Categoria) {
   alert('Funcionalidad para editar la categoría: ' + cat.title)
+}
+function updateCategoriaTitle(cat: Categoria, newTitle: string) {
+  cat.title = newTitle
 }
 function incQty(item: Item) { (item as ItemQty).qty++ }
 function decQty(item: Item) {

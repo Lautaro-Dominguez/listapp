@@ -21,6 +21,7 @@
             @edit="() => editCategory(cat)"
             @remove="(item) => removeItem(cat, item)"
             @edit-item="(item) => openEditProduct(cat, item)"
+            @update:title="(newTitle) => updateCategoryTitle(cat, newTitle)"
           >
             <template #item-left="{ item }">
               <span class="emoji">{{ item.emoji || cat.emoji }}</span>
@@ -146,6 +147,12 @@ function confirmEditProductForm({ name }: { name: string }) {
 function cancelEditProduct() {
   showEditProduct.value = false
   editProductTarget.value = null
+}
+function updateCategoryTitle(cat: any, newTitle: string) {
+  const category = categories.value.find(c => c.id === cat.id)
+  if (category) {
+    category.title = newTitle
+  }
 }
 
 </script>

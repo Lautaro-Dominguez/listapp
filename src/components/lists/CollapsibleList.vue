@@ -2,7 +2,14 @@
   <section class="collapsible-list" :class="{ isCollapsed: localCollapsed }">
     <header class="list-header">
       <div>
-        <h3 class="list-title">{{ title }}</h3>
+        <h3 class="list-title">
+          <template v-if="showEditTitle">
+            <input v-model="editableTitle" @keyup.enter="confirmEditTitle" @blur="cancelEditTitle" class="edit-title-input" />
+          </template>
+          <template v-else>
+            {{ localTitle }}
+          </template>
+        </h3>
         <div v-if="date" class="list-date">{{ date }}</div>
       </div>
       <div class="header-actions">
@@ -11,7 +18,7 @@
           <button class="icon-btn" aria-label="Agregar" @click="$emit('add')">
             <v-icon size="22" icon="mdi-plus" />
           </button>
-          <button class="icon-btn" aria-label="Editar" @click="$emit('edit')">
+          <button class="icon-btn" aria-label="Editar" @click="startEditTitle">
             <v-icon size="22" icon="mdi-pencil-outline" />
           </button>
           <button class="icon-btn" :aria-label="localCollapsed ? 'Expandir' : 'Contraer'" @click="toggle">
@@ -87,17 +94,45 @@ const emit = defineEmits<{
   (e: 'edit'): void
   (e: 'select', item: ListItem): void
   (e: 'remove', item: ListItem): void
+  (e: 'update:title', value: string): void
 }>()
 
 const localCollapsed = ref<boolean>(props.collapsed)
+const localTitle = ref(props.title)
+const showEditTitle = ref(false)
+const editableTitle = ref(props.title)
 
 watch(() => props.collapsed, v => (localCollapsed.value = v))
+watch(() => props.title, (val) => {
+  localTitle.value = val
+  editableTitle.value = val
+})
 
 function toggle() {
   const v = !localCollapsed.value
   localCollapsed.value = v
   emit('update:collapsed', v)
   emit('toggle', v)
+}
+
+function startEditTitle() {
+  showEditTitle.value = true
+  editableTitle.value = localTitle.value
+  setTimeout(() => {
+    const input = document.querySelector('.edit-title-input') as HTMLInputElement
+    if (input) input.focus()
+  }, 0)
+}
+function confirmEditTitle() {
+  if (editableTitle.value.trim() && editableTitle.value !== localTitle.value) {
+    localTitle.value = editableTitle.value.trim()
+    emit('update:title', localTitle.value)
+  }
+  showEditTitle.value = false
+}
+function cancelEditTitle() {
+  showEditTitle.value = false
+  editableTitle.value = localTitle.value
 }
 
 // Obtiene la clave única de cada producto
@@ -231,5 +266,16 @@ function itemKey(item: ListItem) {
   color: #647060;
   padding: 10px 0;
   font-style: italic;
+}
+
+.edit-title-input {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f1f1f;
+  border: 1.5px solid #a3c86d;
+  border-radius: 8px;
+  padding: 2px 8px;
+  width: 90%;
+  font-family: 'Crete Round', serif;
 }
 </style>
