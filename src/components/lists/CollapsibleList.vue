@@ -95,6 +95,8 @@ const emit = defineEmits<{
   (e: 'select', item: ListItem): void
   (e: 'remove', item: ListItem): void
   (e: 'update:title', value: string): void
+  (e: 'edit-item', item: ListItem): void
+  (e: 'save-item', item: ListItem): void
 }>()
 
 const localCollapsed = ref<boolean>(props.collapsed)
