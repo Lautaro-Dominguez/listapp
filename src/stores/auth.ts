@@ -1,11 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { getUserProfile, logoutUser, updateUserProfile } from '@/utils/api'
 
 interface User {
-  id?: string
+  id?: string | number
   name?: string
   surname?: string
   email?: string
+  metadata?: any
+  updatedAt?: string
+  createdAt?: string
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -36,12 +40,62 @@ export const useAuthStore = defineStore('auth', () => {
     logout()
   }
 
+  // Fetch user profile data
+  const fetchUserProfile = async () => {
+    try {
+      if (!token.value) return null
+      const userData = await getUserProfile()
+      setUser(userData)
+      return userData
+    } catch (error) {
+      console.error('Error fetching user profile:', error)
+      // If token is invalid, clear auth
+      clearAuth()
+      throw error
+    }
+  }
+
+  // Logout with API call
+  const performLogout = async () => {
+    try {
+      await logoutUser()
+    } catch (error) {
+      console.error('Error logging out:', error)
+    } finally {
+      // Always clear local state regardless of API response
+      clearAuth()
+    }
+  }
+
+  // Update user profile
+  const updateProfile = async (profileData: { name: string, surname: string, nickname: string }) => {
+    try {
+      const updatedUser = await updateUserProfile({
+        name: profileData.name,
+        surname: profileData.surname,
+        metadata: {
+          apodo: profileData.nickname
+        }
+      })
+      setUser(updatedUser)
+      return updatedUser
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      throw error
+    }
+  }
+
   // Initialize auth state from localStorage
-  const initializeAuth = () => {
+  const initializeAuth = async () => {
     const storedToken = localStorage.getItem('auth-token')
     if (storedToken) {
       token.value = storedToken
-      // Here you could also fetch user data from API using the token
+      try {
+        await fetchUserProfile()
+      } catch (error) {
+        // If profile fetch fails, token might be invalid
+        clearAuth()
+      }
     }
   }
 
@@ -56,6 +110,9 @@ export const useAuthStore = defineStore('auth', () => {
     setUser,
     logout,
     clearAuth,
-    initializeAuth
+    initializeAuth,
+    fetchUserProfile,
+    performLogout,
+    updateProfile
   }
 })

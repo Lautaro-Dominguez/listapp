@@ -3,7 +3,7 @@
         <div class="recovery-container">
             <h1 class="recovery-title">Recuperar contraseña</h1>
             
-            <p class="recovery-subtitle">Por favor complete los siguientes datos:</p>
+            <p class="recovery-subtitle">Por favor ingrese su correo electrónico:</p>
             
             <v-text-field
                 v-model="email"
@@ -13,30 +13,29 @@
                 class="email-field"
             ></v-text-field>
             
-            <div class="password-row">
-                <v-text-field
-                    v-model="password"
-                    label="Nueva contraseña"
-                    :type="showPassword ? 'text' : 'password'"
-                    variant="outlined"
-                    class="password-field"
-                    :append-inner-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'"
-                    @click:append-inner="togglePasswordVisibility"
-                ></v-text-field>
-                
-                <v-text-field
-                    v-model="repeatPassword"
-                    label="Repetir nueva contraseña"
-                    :type="showRepeatPassword ? 'text' : 'password'"
-                    variant="outlined"
-                    class="password-field"
-                    :append-inner-icon="showRepeatPassword ? 'mdi-eye' : 'mdi-eye-off'"
-                    @click:append-inner="toggleRepeatPasswordVisibility"
-                ></v-text-field>
-            </div>
+            <v-alert
+                v-if="errorMessage"
+                type="error"
+                class="mb-4"
+            >
+                {{ errorMessage }}
+            </v-alert>
             
-            <v-btn class="recovery-btn" @click="handleRecovery">
-                Enviar
+            <v-alert
+                v-if="successMessage"
+                type="success"
+                class="mb-4"
+            >
+                {{ successMessage }}
+            </v-alert>
+            
+            <v-btn 
+                class="recovery-btn" 
+                @click="handleForgotPassword"
+                :loading="isLoading"
+                :disabled="isLoading"
+            >
+                Enviar código
             </v-btn>
 
             <div class="login-text">
@@ -49,25 +48,61 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import BaseLayout from '@/layouts/BaseLayout.vue'
+import { forgotPassword } from '@/utils/api'
+
+const router = useRouter()
 
 const email = ref('')
-const password = ref('')
-const repeatPassword = ref('')
-const showPassword = ref(false)
-const showRepeatPassword = ref(false)
+const isLoading = ref(false)
+const errorMessage = ref('')
+const successMessage = ref('')
 
-const togglePasswordVisibility = () => {
-    showPassword.value = !showPassword.value
-}
+const handleForgotPassword = async () => {
+    errorMessage.value = ''
+    successMessage.value = ''
 
-const toggleRepeatPasswordVisibility = () => {
-    showRepeatPassword.value = !showRepeatPassword.value
-}
+    if (!email.value.trim()) {
+        errorMessage.value = 'El correo electrónico es requerido'
+        return
+    }
 
-const handleRecovery = () => {
-    // Sin funcionalidad por ahora
-    console.log('Recuperar contraseña:', { email: email.value, password: password.value })
+    // Validación básica de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email.value)) {
+        errorMessage.value = 'Por favor ingrese un correo electrónico válido'
+        return
+    }
+
+    isLoading.value = true
+
+    try {
+        await forgotPassword(email.value.trim())
+        
+        successMessage.value = 'Se ha enviado un código de recuperación a su correo electrónico'
+        
+        // Guardar email en sessionStorage para la siguiente página
+        sessionStorage.setItem('recovery-email', email.value.trim())
+        
+        // Redirigir a la página de reset después de un tiempo
+        setTimeout(() => {
+            router.push('/reset-password')
+        }, 2000)
+        
+    } catch (error: any) {
+        console.error('Error sending recovery email:', error)
+        
+        if (error.status === 400) {
+            errorMessage.value = 'Datos inválidos. Verifique el correo electrónico ingresado'
+        } else if (error.status === 404) {
+            errorMessage.value = 'No se encontró una cuenta con este correo electrónico'
+        } else {
+            errorMessage.value = error.message || 'Error al enviar el código de recuperación. Intente nuevamente'
+        }
+    } finally {
+        isLoading.value = false
+    }
 }
 </script>
 
@@ -125,6 +160,11 @@ const handleRecovery = () => {
 :deep(.email-field .v-field__input),
 :deep(.password-field .v-field__input) {
     color: #666666;
+}
+
+.mb-4 {
+    margin-bottom: 20px !important;
+    width: 75%;
 }
 
 .recovery-btn {

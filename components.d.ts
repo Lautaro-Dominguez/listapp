@@ -10,6 +10,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     CollapsibleList: typeof import('./src/components/lists/CollapsibleList.vue')['default']
     DirectAccess: typeof import('./src/components/DirectAccess.vue')['default']
+    EditProfileForm: typeof import('./src/components/EditProfileForm.vue')['default']
     ItemQtyActions: typeof import('./src/components/ItemQtyActions.vue')['default']
     NewCategoryForm: typeof import('./src/components/NewCategoryForm.vue')['default']
     NewProductForm: typeof import('./src/components/NewProductForm.vue')['default']

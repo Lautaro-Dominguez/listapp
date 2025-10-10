@@ -6,6 +6,12 @@ export const API_ENDPOINTS = {
   REGISTER: '/api/users/register',
   VERIFY_ACCOUNT: '/api/users/verify-account',
   LOGIN: '/api/users/login',
+  PROFILE: '/api/users/profile',
+  LOGOUT: '/api/users/logout',
+  CHANGE_PASSWORD: '/api/users/change-password',
+  FORGOT_PASSWORD: '/api/users/forgot-password',
+  RESET_PASSWORD: '/api/users/reset-password',
+  SEND_VERIFICATION: '/api/users/send-verification',
   PRODUCTS: '/api/products',
   CATEGORIES: '/api/categories'
 }
@@ -21,11 +27,18 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   }
+  
   const res = await fetch(buildApiUrl(endpoint), {
     ...options,
     headers: { ...headers, ...(options.headers || {}) }
   })
-  if (!res.ok) throw await res.json().catch(() => ({ message: 'API error' }))
+  
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ message: 'API error' }))
+    errorData.status = res.status
+    throw errorData
+  }
+  
   return res.json()
 }
 
@@ -76,4 +89,57 @@ export async function updateCategory(id: number, data: any) {
 
 export async function deleteCategory(id: number) {
   return apiRequest(`${API_ENDPOINTS.CATEGORIES}/${id}`, { method: 'DELETE' })
+}
+
+// User Profile API
+export async function getUserProfile() {
+  return apiRequest(API_ENDPOINTS.PROFILE, {
+    method: 'GET'
+  })
+}
+
+export async function logoutUser() {
+  return apiRequest(API_ENDPOINTS.LOGOUT, {
+    method: 'POST'
+  })
+}
+
+export async function changePassword(currentPassword: string, newPassword: string) {
+  return apiRequest(API_ENDPOINTS.CHANGE_PASSWORD, {
+    method: 'POST',
+    body: JSON.stringify({
+      currentPassword,
+      newPassword
+    })
+  })
+}
+
+export async function updateUserProfile(profileData: { name: string, surname: string, metadata: any }) {
+  return apiRequest(API_ENDPOINTS.PROFILE, {
+    method: 'PUT',
+    body: JSON.stringify(profileData)
+  })
+}
+
+export async function forgotPassword(email: string) {
+  const url = new URL(buildApiUrl(API_ENDPOINTS.FORGOT_PASSWORD))
+  url.searchParams.append('email', email)
+  return apiRequest(url.pathname + url.search, {
+    method: 'POST'
+  })
+}
+
+export async function resetPassword(code: string, password: string) {
+  return apiRequest(API_ENDPOINTS.RESET_PASSWORD, {
+    method: 'POST',
+    body: JSON.stringify({ code, password })
+  })
+}
+
+export async function sendVerificationCode(email: string) {
+  const url = new URL(buildApiUrl(API_ENDPOINTS.SEND_VERIFICATION))
+  url.searchParams.append('email', email)
+  return apiRequest(url.pathname + url.search, {
+    method: 'POST'
+  })
 }

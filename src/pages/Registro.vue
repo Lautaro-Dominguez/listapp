@@ -155,9 +155,13 @@ const handleRegister = async () => {
             const data = await response.json()
             successMessage.value = 'Usuario registrado exitosamente. Redirigiendo a verificación...'
             
+            // Guardar email para la página de verificación
+            sessionStorage.setItem('registration-email', email.value)
+            
             nombre.value = ''
             apellido.value = ''
             apodo.value = ''
+            const emailToSave = email.value // Guardar antes de limpiar
             email.value = ''
             password.value = ''
             repeatPassword.value = ''

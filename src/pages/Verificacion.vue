@@ -13,7 +13,9 @@
             ></v-text-field>
             
             <div class="resend-code">
-                <router-link to="#" class="link-underline" @click.prevent="resendCode">Reenviar código</router-link>
+                <span @click="handleResendCode" class="link-underline resend-link" :class="{ disabled: isResending }">
+                    {{ isResending ? 'Reenviando...' : 'Reenviar código' }}
+                </span>
             </div>
             
             <v-alert
@@ -45,20 +47,51 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseLayout from '@/layouts/BaseLayout.vue'
-import { buildApiUrl, API_ENDPOINTS } from '@/utils/api'
+import { buildApiUrl, API_ENDPOINTS, sendVerificationCode } from '@/utils/api'
 
 const router = useRouter()
+const email = ref('')
 const verificationCode = ref('')
 const isLoading = ref(false)
+const isResending = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 
 const resendCode = () => {
-    // Sin funcionalidad por ahora
-    console.log('Reenviar código solicitado')
+    // Función antigua, ya no se usa
+}
+
+const handleResendCode = async () => {
+    if (!email.value) {
+        errorMessage.value = 'No se pudo obtener el email para reenviar el código'
+        return
+    }
+
+    errorMessage.value = ''
+    successMessage.value = ''
+    isResending.value = true
+
+    try {
+        await sendVerificationCode(email.value)
+        successMessage.value = 'Nuevo código enviado a su correo electrónico'
+    } catch (error: any) {
+        console.error('Error resending code:', error)
+        
+        if (error.status === 400) {
+            errorMessage.value = 'Error al enviar el código. Verifique el correo electrónico'
+        } else if (error.status === 404) {
+            errorMessage.value = 'No se encontró una cuenta con este correo electrónico'
+        } else if (error.status === 409) {
+            errorMessage.value = 'Ya se envió un código recientemente. Espere antes de solicitar otro'
+        } else {
+            errorMessage.value = error.message || 'Error al reenviar el código. Intente nuevamente'
+        }
+    } finally {
+        isResending.value = false
+    }
 }
 
 const handleVerification = async () => {
@@ -86,6 +119,10 @@ const handleVerification = async () => {
             successMessage.value = 'Cuenta verificada exitosamente. Redirigiendo al login...'
             verificationCode.value = ''
             
+            // Limpiar sessionStorage
+            sessionStorage.removeItem('registration-email')
+            sessionStorage.removeItem('recovery-email')
+            
             // Redirigir al login después de 2 segundos
             setTimeout(() => {
                 router.push('/login')
@@ -108,6 +145,14 @@ const handleVerification = async () => {
         isLoading.value = false
     }
 }
+
+// Obtener email del sessionStorage al montar el componente
+onMounted(() => {
+    const storedEmail = sessionStorage.getItem('registration-email') || sessionStorage.getItem('recovery-email')
+    if (storedEmail) {
+        email.value = storedEmail
+    }
+})
 </script>
 
 <style scoped>
@@ -172,6 +217,19 @@ const handleVerification = async () => {
 
 .link-underline:hover {
     color: #333333;
+}
+
+.resend-link {
+    cursor: pointer;
+}
+
+.resend-link.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.resend-link.disabled:hover {
+    color: #666666;
 }
 
 /* Alertas de error y éxito */
