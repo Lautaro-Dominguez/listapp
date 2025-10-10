@@ -26,7 +26,20 @@
                 <router-link to="/recuperar-contraseña" class="link-underline">aquí</router-link>
             </div>
             
-            <v-btn class="login-btn" @click="handleLogin">
+            <v-alert
+                v-if="errorMessage"
+                type="error"
+                class="mb-4"
+            >
+                {{ errorMessage }}
+            </v-alert>
+            
+            <v-btn 
+                class="login-btn" 
+                @click="handleLogin"
+                :loading="isLoading"
+                :disabled="isLoading"
+            >
                 Iniciar sesión
             </v-btn>
             
@@ -42,19 +55,78 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseLayout from '@/layouts/BaseLayout.vue'
+import { buildApiUrl, API_ENDPOINTS } from '@/utils/api'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
+const authStore = useAuthStore()
+
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
+const isLoading = ref(false)
+const errorMessage = ref('')
 
 const togglePasswordVisibility = () => {
     showPassword.value = !showPassword.value
 }
 
-const handleLogin = () => {
-    console.log('Login attempt:', email.value, password.value)
-    router.push('/')
+const handleLogin = async () => {
+    // Validaciones básicas
+    if (!email.value || !password.value) {
+        errorMessage.value = 'Por favor complete todos los campos'
+        return
+    }
+
+    if (password.value.length < 6) {
+        errorMessage.value = 'La contraseña debe tener al menos 6 caracteres'
+        return
+    }
+
+    isLoading.value = true
+    errorMessage.value = ''
+
+    try {
+        const response = await fetch(buildApiUrl(API_ENDPOINTS.LOGIN), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: email.value,
+                password: password.value
+            })
+        })
+
+        if (response.status === 200) {
+            const data = await response.json()
+            
+            // Almacenar el token en Pinia
+            authStore.setToken(data.token)
+            
+            // Limpiar formulario
+            email.value = ''
+            password.value = ''
+            
+            // Redirigir al home
+            router.push('/')
+            
+        } else if (response.status === 400) {
+            errorMessage.value = 'Datos inválidos. Por favor revise la información ingresada.'
+        } else if (response.status === 401) {
+            errorMessage.value = 'Email o contraseña incorrectos.'
+        } else if (response.status === 500) {
+            errorMessage.value = 'Error interno del servidor. Intente nuevamente más tarde.'
+        } else {
+            errorMessage.value = 'Error inesperado. Intente nuevamente.'
+        }
+        
+    } catch (error) {
+        console.error('Error en login:', error)
+        errorMessage.value = 'Error de conexión. Verifique su conexión a internet.'
+    } finally {
+        isLoading.value = false
+    }
 }
 </script>
 
@@ -116,6 +188,11 @@ const handleLogin = () => {
     color: #333333;
 }
 
+/* Alertas de error */
+.mb-4 {
+    margin-bottom: 20px !important;
+    width: 75%;
+}
 
 .login-btn {
     background-color: #8CC94F ;

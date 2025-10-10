@@ -21,27 +21,7 @@
           <!-- Ventana de perfil -->
           <div v-if="showProfileWindow" class="profile-window">
             <div class="profile-window-content">
-              <div v-if="isAuthenticated" class="user-info">
-                <div class="user-avatar">
-                  <img :src="profileUrl" alt="Perfil" class="avatar-img" />
-                </div>
-                <div class="user-details">
-                  <h3 class="user-name">{{ user?.name }}</h3>
-                  <p class="user-email">{{ user?.email }}</p>
-                </div>
-                <div class="profile-actions">
-                  <v-btn
-                    color="error"
-                    variant="outlined"
-                    size="small"
-                    @click="handleLogout"
-                    block
-                  >
-                    Cerrar Sesión
-                  </v-btn>
-                </div>
-              </div>
-              <div v-else class="login-prompt">
+              <div class="login-prompt">
                 <p class="prompt-text">No has iniciado sesión</p>
                 <v-btn
                   @click="goToLogin"
@@ -65,24 +45,16 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuth } from '@/composables/useAuth'
 import profileUrl from '@/assets/profile_logo.png'
 import logoUrl from '@/assets/listapp_logo.png'
 
 const router = useRouter()
-const { user, isAuthenticated, logout, initializeAuth } = useAuth()
 
 const showProfileWindow = ref(false)
 const profileRef = ref(null)
 
 const toggleProfileWindow = () => {
   showProfileWindow.value = !showProfileWindow.value
-}
-
-const handleLogout = () => {
-  logout()
-  showProfileWindow.value = false
-  router.push('/')
 }
 
 const goToLogin = () => {
@@ -97,7 +69,6 @@ const handleClickOutside = (event) => {
 }
 
 onMounted(() => {
-  initializeAuth()
   document.addEventListener('click', handleClickOutside)
 })
 
@@ -200,45 +171,7 @@ onUnmounted(() => {
   padding: 20px;
 }
 
-.user-info {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.user-avatar {
-  display: flex;
-  justify-content: center;
-}
-
-.avatar-img {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  border: 3px solid #98ba64;
-}
-
-.user-details {
-  text-align: center;
-}
-
-.user-name {
-  margin: 0 0 4px 0;
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #2c3e50;
-}
-
-.user-email {
-  margin: 0;
-  font-size: 0.9rem;
-  color: #6c757d;
-}
-
-.profile-actions {
-  margin-top: 8px;
-}
-
+/* Login prompt styles */
 .login-prompt {
   text-align: center;
   display: flex;
@@ -252,15 +185,17 @@ onUnmounted(() => {
   color: #6c757d;
 }
 
+/* Botón de login en el profile dropdown */
 .profile-login-btn {
-  background-color: #8CC94F;
-  color: #666666;
-  text-transform: none;
+  background-color: #8CC94F !important;
+  color: #666666 !important;
+  text-transform: none !important;
+  font-weight: 600;
   width: 100%;
 }
 
 :deep(.profile-login-btn .v-btn__content) {
-  color: #666666;
+  color: #666666 !important;
 }
 .main-content {
   background: #e8f4e1;
