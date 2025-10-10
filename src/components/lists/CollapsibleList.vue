@@ -1,4 +1,3 @@
-
 <template>
   <section class="collapsible-list" :class="{ isCollapsed: localCollapsed }">
     <header class="list-header">
@@ -38,6 +37,9 @@
           <div class="right">
             <!-- Slot para acciones a la derecha  -->
             <slot name="item-right" :item="item">
+              <button class="icon-btn soft" aria-label="Editar" @click.stop="$emit('edit-item', item)">
+                <v-icon size="20" icon="mdi-pencil-outline" />
+              </button>
               <button class="icon-btn soft" aria-label="Eliminar" @click.stop="$emit('remove', item)">
                 <v-icon size="20" icon="mdi-trash-can-outline" />
               </button>

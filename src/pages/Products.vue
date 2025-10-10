@@ -20,6 +20,7 @@
             @add="() => openAddProduct(cat.id)"
             @edit="() => editCategory(cat)"
             @remove="(item) => removeItem(cat, item)"
+            @edit-item="(item) => openEditProduct(cat, item)"
           >
             <template #item-left="{ item }">
               <span class="emoji">{{ item.emoji || cat.emoji }}</span>
@@ -36,6 +37,15 @@
           <NewProductForm
             @add="confirmAddProductForm"
             @cancel="cancelAddProduct"
+          />
+        </div>
+        <div v-if="showEditProduct">
+          <NewProductForm
+            :edit="true"
+            :initial-name="editProductTarget.item.label"
+            :initial-emoji="editProductTarget.item.emoji"
+            @confirm="confirmEditProductForm"
+            @cancel="cancelEditProduct"
           />
         </div>
       </section>
@@ -76,6 +86,8 @@ const categories = ref([
 const showAddCategory = ref(false)
 const addProductTarget = ref<number | null>(null)
 const showAddProduct = ref(false)
+const editProductTarget = ref<{ catId: number, item: Item } | null>(null)
+const showEditProduct = ref(false)
 
 function openAddProduct(categoryId: number) {
   addProductTarget.value = categoryId
@@ -117,6 +129,23 @@ function removeItem(cat: any, item: Item) {
   if (index !== -1 && categories.value[index]?.items) {
     categories.value[index].items = categories.value[index].items.filter(i => i.id !== item.id)
   }
+}
+function openEditProduct(cat: any, item: Item) {
+  editProductTarget.value = { catId: cat.id, item }
+  showEditProduct.value = true
+}
+function confirmEditProductForm({ name }: { name: string }) {
+  if (!editProductTarget.value || !name) return
+  const cat = categories.value.find(c => c.id === editProductTarget.value!.catId)
+  if (!cat) return
+  const prod = cat.items.find((i: Item) => i.id === editProductTarget.value!.item.id)
+  if (prod) prod.label = name
+  showEditProduct.value = false
+  editProductTarget.value = null
+}
+function cancelEditProduct() {
+  showEditProduct.value = false
+  editProductTarget.value = null
 }
 
 </script>

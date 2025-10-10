@@ -1,7 +1,7 @@
 <template>
   <div class="modal-bg">
     <div class="modal">
-      <h3>Nuevo producto</h3>
+      <h3>{{ edit ? 'Editar producto' : 'Nuevo producto' }}</h3>
       <label>Nombre:<input v-model="localName" placeholder="Nombre del producto" /></label>
       <label>Emoji:
         <select v-model="localEmoji" class="emoji-select">
@@ -10,7 +10,7 @@
         </select>
       </label>
       <div class="modal-actions">
-        <button @click="onAdd">Agregar</button>
+        <button @click="onAdd">{{ edit ? 'Guardar' : 'Agregar' }}</button>
         <button @click="$emit('cancel')">Cancelar</button>
       </div>
     </div>
@@ -23,11 +23,14 @@ import { ref, watch, defineProps, defineEmits } from 'vue'
 const props = defineProps({
   name: { type: String, default: '' },
   emoji: { type: String, default: '' },
+  edit: { type: Boolean, default: false },
+  initialName: { type: String, default: '' },
+  initialEmoji: { type: String, default: '' },
 })
-const emit = defineEmits(['add', 'cancel'])
+const emit = defineEmits(['add', 'cancel', 'confirm'])
 
-const localName = ref(props.name)
-const localEmoji = ref(props.emoji)
+const localName = ref(props.edit ? props.initialName : props.name)
+const localEmoji = ref(props.edit ? props.initialEmoji : props.emoji)
 
 const emojiList = [
   '🍎', // Manzana
@@ -75,10 +78,16 @@ const emojiLabel: Record<string, string> = {
 
 watch(() => props.name, (val) => { localName.value = val })
 watch(() => props.emoji, (val) => { localEmoji.value = val })
+watch(() => props.initialName, (val) => { if (props.edit) localName.value = val })
+watch(() => props.initialEmoji, (val) => { if (props.edit) localEmoji.value = val })
 
 function onAdd() {
   if (!localName.value.trim()) return
-  emit('add', { name: localName.value.trim(), emoji: localEmoji.value.trim() })
+  if (props.edit) {
+    emit('confirm', { name: localName.value.trim() })
+  } else {
+    emit('add', { name: localName.value.trim(), emoji: localEmoji.value.trim() })
+  }
   localName.value = ''
   localEmoji.value = ''
 }
