@@ -93,7 +93,8 @@ async function fetchCategoriesAndProducts() {
       if (!map.has(catId)) {
         map.set(catId, { id: catId, title: p.category?.name || 'Categoría', emoji: '📦', items: [], collapsed: false })
       }
-      map.get(catId)!.items.push({ id: p.id, label: p.name, emoji: '🆕' })
+      const pEmoji = (p.metadata && (p.metadata.emoji as string)) || '🆕'
+      map.get(catId)!.items.push({ id: p.id, label: p.name, emoji: pEmoji })
     }
     categories.value = Array.from(map.values())
   } catch (e: any) {
@@ -114,12 +115,14 @@ async function confirmAddProductForm({ name, emoji }: { name: string; emoji: str
   const cat = categories.value.find(c => c.id === addProductTarget.value)
   if (!cat) return
   try {
-    const created = await createProduct({
+    const payload = {
       name,
       category: { id: cat.id },
-      metadata: {}
-    })
-    cat.items.push({ id: created.id, label: created.name, emoji: emoji || '🆕' })
+      metadata: emoji ? { emoji } : {}
+    }
+    const created = await createProduct(payload)
+    const createdEmoji = (created.metadata && (created.metadata.emoji as string)) || emoji || '🆕'
+    cat.items.push({ id: created.id, label: created.name, emoji: createdEmoji })
   } catch (e: any) {
     error.value = e.message || 'Error al crear producto'
   }
@@ -161,7 +164,7 @@ function openEditProduct(cat: any, item: Item) {
   editProductTarget.value = { catId: cat.id, item }
   showEditProduct.value = true
 }
-async function confirmEditProductForm({ name }: { name: string }) {
+async function confirmEditProductForm({ name, emoji }: { name: string; emoji: string }) {
   if (!editProductTarget.value || !name) return
   const cat = categories.value.find(c => c.id === editProductTarget.value!.catId)
   if (!cat) return
@@ -171,9 +174,11 @@ async function confirmEditProductForm({ name }: { name: string }) {
     const updated = await updateProduct(prod.id, {
       name,
       category: { id: cat.id },
-      metadata: {}
+      metadata: emoji ? { emoji } : {}
     })
     prod.label = updated.name
+    const updatedEmoji = (updated.metadata && (updated.metadata.emoji as string)) || emoji || prod.emoji
+    prod.emoji = updatedEmoji
   } catch (e: any) {
     error.value = e.message || 'Error al actualizar producto'
   }

@@ -82,9 +82,9 @@ watch(() => props.initialName, (val) => { if (props.edit) localName.value = val 
 watch(() => props.initialEmoji, (val) => { if (props.edit) localEmoji.value = val })
 
 function onAdd() {
-  if (!localName.value.trim()) return
+  if (!localName.value.trim() || localName.value.length > 13) return
   if (props.edit) {
-    emit('confirm', { name: localName.value.trim() })
+    emit('confirm', { name: localName.value.trim(), emoji: localEmoji.value.trim() })
   } else {
     emit('add', { name: localName.value.trim(), emoji: localEmoji.value.trim() })
   }
