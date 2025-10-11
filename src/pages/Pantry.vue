@@ -114,6 +114,24 @@
           @cancel="cancelAddItem"
         />
       </div>
+      <div v-if="showEditPantry">
+        <div class="modal-bg" @click="cancelEditPantry">
+          <div class="modal" @click.stop>
+            <h3>Editar Despensa</h3>
+            <label>Nombre:<input
+                v-model="editPantryName"
+                placeholder="Nombre de la despensa"
+                @keyup.enter="confirmEditPantry"
+                autofocus
+              /></label>
+            <div v-if="error" class="error-message">{{ error }}</div>
+            <div class="modal-actions">
+              <button @click="confirmEditPantry">Guardar</button>
+              <button @click="cancelEditPantry">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </BaseLayout>
 </template>
@@ -141,6 +159,9 @@ const ownPantries = ref<Pantry[]>([])
 const sharedPantries = ref<Pantry[]>([])
 const showAddPantry = ref(false)
 const showAddItem = ref(false)
+const showEditPantry = ref(false)
+const editingPantry = ref<Pantry | null>(null)
+const editPantryName = ref('')
 const addItemTargetId = ref<number | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -308,8 +329,9 @@ async function removeItem(pantry: Pantry, item: ItemQty) {
 }
 
 function editPantry(pantry: Pantry) {
-  // Reserved for future
-  console.log('Edit pantry:', pantry)
+  editingPantry.value = pantry
+  editPantryName.value = pantry.title
+  showEditPantry.value = true
 }
 
 async function updatePantryTitle(pantry: Pantry, newTitle: string) {
@@ -319,6 +341,40 @@ async function updatePantryTitle(pantry: Pantry, newTitle: string) {
   } catch (e: any) {
     error.value = e.message || 'Error al actualizar despensa'
   }
+}
+
+async function confirmEditPantry() {
+  if (!editingPantry.value || !editPantryName.value) return
+
+  try {
+    const updated = await updatePantry(editingPantry.value.id, {
+      name: editPantryName.value,
+      metadata: {}
+    })
+    editingPantry.value.title = updated.name
+    error.value = null
+  } catch (e: any) {
+    if (e.status === 403) {
+      error.value = 'No tienes permisos para editar esta despensa'
+    } else if (e.status === 409) {
+      error.value = 'Ya existe una despensa con ese nombre'
+    } else {
+      error.value = e.message || 'Error al actualizar despensa'
+    }
+    console.error('Error al editar despensa:', e)
+    return
+  }
+
+  showEditPantry.value = false
+  editingPantry.value = null
+  editPantryName.value = ''
+}
+
+function cancelEditPantry() {
+  showEditPantry.value = false
+  editingPantry.value = null
+  editPantryName.value = ''
+  error.value = null
 }
 
 async function incQty(pantry: Pantry, item: Item) {
@@ -428,5 +484,75 @@ async function deletePantryHandler(pantry: Pantry) {
 }
 .icon-btn:hover {
   color: #007bff;
+}
+.modal-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px 28px 18px;
+  min-width: 260px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.modal h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: #1f1f1f;
+  justify-content: center;
+  text-align: center;
+}
+.modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 15px;
+}
+.modal input {
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #bbb;
+  color: #222;
+  background: #fff;
+}
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.modal-actions button {
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: none;
+  background: #eee;
+  color: #222;
+  font-weight: 600;
+  cursor: pointer;
+}
+.modal-actions button:first-child {
+  background: #000;
+  color: #fff;
+}
+.error-message {
+  color: #e74c3c;
+  font-size: 14px;
+  padding: 8px 12px;
+  background: #ffebee;
+  border-radius: 4px;
+  border-left: 3px solid #e74c3c;
 }
 </style>
