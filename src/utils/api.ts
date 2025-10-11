@@ -13,7 +13,9 @@ export const API_ENDPOINTS = {
   RESET_PASSWORD: '/api/users/reset-password',
   SEND_VERIFICATION: '/api/users/send-verification',
   PRODUCTS: '/api/products',
-  CATEGORIES: '/api/categories'
+  CATEGORIES: '/api/categories',
+  PANTRIES: '/api/pantries',
+  PANTRY_ITEMS: '/api/pantries'
 }
 
 // Helper function to build full API URLs
@@ -27,18 +29,18 @@ export async function apiRequest<T = any>(endpoint: string, options: RequestInit
     'Content-Type': 'application/json',
     ...(token ? { 'Authorization': `Bearer ${token}` } : {})
   }
-  
+
   const res = await fetch(buildApiUrl(endpoint), {
     ...options,
     headers: { ...headers, ...(options.headers || {}) }
   })
-  
+
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({ message: 'API error' }))
     errorData.status = res.status
     throw errorData
   }
-  
+
   return res.json()
 }
 
@@ -141,5 +143,73 @@ export async function sendVerificationCode(email: string) {
   url.searchParams.append('email', email)
   return apiRequest(url.pathname + url.search, {
     method: 'POST'
+  })
+}
+
+// Pantries API
+export async function getPantries(params: Record<string, any> = {}) {
+  const url = new URL(buildApiUrl(API_ENDPOINTS.PANTRIES))
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null) {
+      url.searchParams.append(k, String(v))
+    }
+  })
+  return apiRequest(url.pathname + url.search, { method: 'GET' })
+}
+
+export async function createPantry(data: { name: string; metadata?: any }) {
+  return apiRequest(API_ENDPOINTS.PANTRIES, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+}
+
+export async function getPantryById(id: number) {
+  return apiRequest(`${API_ENDPOINTS.PANTRIES}/${id}`, {
+    method: 'GET'
+  })
+}
+
+export async function updatePantry(id: number, data: { name?: string; metadata?: any }) {
+  return apiRequest(`${API_ENDPOINTS.PANTRIES}/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  })
+}
+
+export async function deletePantry(id: number) {
+  return apiRequest(`${API_ENDPOINTS.PANTRIES}/${id}`, {
+    method: 'DELETE'
+  })
+}
+
+// Pantry Items API
+export async function getPantryItems(pantryId: number, params: Record<string, any> = {}) {
+  const url = new URL(buildApiUrl(`${API_ENDPOINTS.PANTRY_ITEMS}/${pantryId}/items`))
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null) {
+      url.searchParams.append(k, String(v))
+    }
+  })
+  return apiRequest(url.pathname + url.search, { method: 'GET' })
+}
+
+export async function createPantryItem(pantryId: number, data: any) {
+  return apiRequest(`${API_ENDPOINTS.PANTRY_ITEMS}/${pantryId}/items`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+}
+
+export async function updatePantryItem(pantryId: number, itemId: number, data: any) {
+  return apiRequest(`${API_ENDPOINTS.PANTRY_ITEMS}/${pantryId}/items/${itemId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  })
+}
+
+export async function deletePantryItem(pantryId: number, itemId: number) {
+  return apiRequest(`${API_ENDPOINTS.PANTRY_ITEMS}/${pantryId}/items/${itemId}`, {
+    method: 'DELETE'
   })
 }
