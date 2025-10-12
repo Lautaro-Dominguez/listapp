@@ -279,7 +279,7 @@ export async function getPantryItems(pantryId: number, params: Record<string, an
       url.searchParams.append(k, String(v))
     }
   })
-  // Run pantry items requests serially to mitigate backend SQLite transaction/savepoint issues
+  //  solicitudes de productos en serie
   return enqueueSerial('pantry-items', async () => {
     const result = await apiRequest(url.pathname + url.search, { method: 'GET' })
     return normalizePaginatedResponse(result)
@@ -287,22 +287,29 @@ export async function getPantryItems(pantryId: number, params: Record<string, an
 }
 
 export async function createPantryItem(pantryId: number, data: any) {
-  return apiRequest(`${API_ENDPOINTS.PANTRY_ITEMS}/${pantryId}/items`, {
-    method: 'POST',
-    body: JSON.stringify(data)
+  // Serialización de escrituras por despensa para evitar problemas de transacciones/savepoints concurrentes en SQLite del backend
+  return enqueueSerial(`pantry-write-${pantryId}`, async () => {
+    return apiRequest(`${API_ENDPOINTS.PANTRY_ITEMS}/${pantryId}/items`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
   })
 }
 
 export async function updatePantryItem(pantryId: number, itemId: number, data: any) {
-  return apiRequest(`${API_ENDPOINTS.PANTRY_ITEMS}/${pantryId}/items/${itemId}`, {
-    method: 'PUT',
-    body: JSON.stringify(data)
+  return enqueueSerial(`pantry-write-${pantryId}`, async () => {
+    return apiRequest(`${API_ENDPOINTS.PANTRY_ITEMS}/${pantryId}/items/${itemId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
   })
 }
 
 export async function deletePantryItem(pantryId: number, itemId: number) {
-  return apiRequest(`${API_ENDPOINTS.PANTRY_ITEMS}/${pantryId}/items/${itemId}`, {
-    method: 'DELETE'
+  return enqueueSerial(`pantry-write-${pantryId}`, async () => {
+    return apiRequest(`${API_ENDPOINTS.PANTRY_ITEMS}/${pantryId}/items/${itemId}`, {
+      method: 'DELETE'
+    })
   })
 }
 

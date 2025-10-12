@@ -111,6 +111,7 @@
       <div v-if="showAddItem">
           <SelectProductForm
           @add="confirmAddItemForm"
+          @addMultiple="confirmAddItems"
           @cancel="cancelAddItem"
         />
       </div>
@@ -495,6 +496,54 @@ async function confirmAddItemForm({ productId, quantity }: { productId: number; 
 
   showAddItem.value = false
   addItemTargetId.value = null
+}
+
+// Agrega un producto a la despensa actualmente seleccionada
+async function addSingleToPantry(pantryId: number, productId: number, quantity: number) {
+  let pantry = ownPantries.value.find(p => p.id === pantryId)
+  if (!pantry) {
+    pantry = sharedPantries.value.find(p => p.id === pantryId)
+  }
+  if (!pantry) throw new Error('Despensa no encontrada')
+
+  const existing = pantry.items.find(i => i.productId === productId)
+  if (existing) {
+    const newQty = existing.qty + quantity
+    const updated = await updatePantryItem(pantry.id, existing.id, { quantity: newQty, unit: existing.unit || 'unidades' })
+    existing.qty = updated.quantity || newQty
+    return existing
+  } else {
+    const created = await createPantryItem(pantry.id, { product: { id: productId }, quantity, unit: 'unidades', metadata: {} })
+    const createdEmoji = created.product?.metadata?.emoji || '📦'
+    const newItem = {
+      id: created.id,
+      label: created.product?.name || 'Producto',
+      emoji: createdEmoji,
+      qty: created.quantity || quantity,
+      productId: created.product?.id,
+      unit: created.unit || 'unidades'
+    }
+    pantry.items.push(newItem)
+    return newItem
+  }
+}
+
+// Procesa varios productos emitidos desde el modal en serie para evitar errores de concurrencia
+async function confirmAddItems(payload: { items: { productId: number; quantity: number }[] }) {
+  if (addItemTargetId.value === null) return
+  const pantryId = addItemTargetId.value
+  try {
+    for (const it of payload.items) {
+      await addSingleToPantry(pantryId, it.productId, it.quantity)
+    }
+    error.value = null
+  } catch (e: any) {
+    console.error('Error al agregar múltiples productos:', e)
+    error.value = e?.message || 'Error al agregar productos a la despensa'
+  } finally {
+    showAddItem.value = false
+    addItemTargetId.value = null
+  }
 }
 
 function cancelAddItem() {

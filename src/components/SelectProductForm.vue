@@ -25,8 +25,8 @@
             >
               <span class="product-emoji">{{ product.emoji }}</span>
               <span class="product-name">{{ product.label }}</span>
-              <div v-if="isProductSelected(product.id)" class="quantity-badge">
-                {{ getProductQuantity(product.id) }}
+              <div v-if="isProductSelected(product.id)" class="selected-indicator" title="Seleccionado">
+                ✓
               </div>
             </div>
           </div>
@@ -40,11 +40,6 @@
           <div v-for="item in selectedProducts" :key="item.productId" class="selected-item">
             <span class="selected-emoji">{{ item.emoji }}</span>
             <span class="selected-name">{{ item.label }}</span>
-            <div class="quantity-controls">
-              <button @click="decreaseQuantity(item.productId)" class="qty-btn">-</button>
-              <span class="qty-value">{{ item.quantity }}</span>
-              <button @click="increaseQuantity(item.productId)" class="qty-btn">+</button>
-            </div>
             <button @click="removeProduct(item.productId)" class="remove-btn" title="Eliminar">
               ×
             </button>
@@ -74,10 +69,11 @@ import { getCategories, getProducts } from '@/utils/api'
 
 type Item = { id: number; label: string; emoji: string }
 type Category = { id: number; title: string; items: Item[] }
-type SelectedProduct = { productId: number; label: string; emoji: string; quantity: number }
+type SelectedProduct = { productId: number; label: string; emoji: string }
 
 const emit = defineEmits<{
   add: [payload: { productId: number; quantity: number }]
+  addMultiple: [payload: { items: { productId: number; quantity: number }[] }]
   cancel: []
 }>()
 
@@ -123,11 +119,6 @@ function isProductSelected(productId: number): boolean {
   return selectedProducts.value.some(p => p.productId === productId)
 }
 
-function getProductQuantity(productId: number): number {
-  const product = selectedProducts.value.find(p => p.productId === productId)
-  return product?.quantity || 0
-}
-
 function toggleProduct(product: Item) {
   const index = selectedProducts.value.findIndex(p => p.productId === product.id)
   if (index >= 0) {
@@ -136,27 +127,8 @@ function toggleProduct(product: Item) {
     selectedProducts.value.push({
       productId: product.id,
       label: product.label,
-      emoji: product.emoji,
-      quantity: 1
+      emoji: product.emoji
     })
-  }
-}
-
-function increaseQuantity(productId: number) {
-  const product = selectedProducts.value.find(p => p.productId === productId)
-  if (product) {
-    product.quantity++
-  }
-}
-
-function decreaseQuantity(productId: number) {
-  const product = selectedProducts.value.find(p => p.productId === productId)
-  if (product) {
-    if (product.quantity > 1) {
-      product.quantity--
-    } else {
-      removeProduct(productId)
-    }
   }
 }
 
@@ -173,13 +145,9 @@ function confirmAdd() {
     return
   }
 
-  // Emitir cada producto seleccionado
-  selectedProducts.value.forEach(item => {
-    emit('add', {
-      productId: item.productId,
-      quantity: item.quantity
-    })
-  })
+  // Emitir todos los productos seleccionados en un solo evento (cantidad fija = 1)
+  const items = selectedProducts.value.map(item => ({ productId: item.productId, quantity: 1 }))
+  emit('addMultiple', { items })
 }
 
 onMounted(fetchCategoriesAndProducts)
@@ -294,13 +262,15 @@ onMounted(fetchCategoriesAndProducts)
   max-width: 100%;
 }
 
-.quantity-badge {
+/* quantity badge removed: selection always adds with quantity = 1 in despensa */
+
+.selected-indicator {
   position: absolute;
   top: 8px;
   right: 8px;
   background: #9bd166;
-  color: #000000;
-  font-weight: 600;
+  color: #fff;
+  font-weight: 700;
   font-size: 12px;
   width: 24px;
   height: 24px;
@@ -346,42 +316,6 @@ onMounted(fetchCategoriesAndProducts)
   font-size: 15px;
   font-weight: 500;
   color: #333;
-}
-
-.quantity-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.qty-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 4px;
-  border: 1px solid #ccc;
-  background: #fff;
-  color: #333;
-  font-size: 18px;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-}
-
-.qty-btn:hover {
-  background: #9bd166;
-  border-color: #9bd166;
-  color: #fff;
-}
-
-.qty-value {
-  min-width: 30px;
-  text-align: center;
-  font-weight: 600;
-  font-size: 15px;
-  color: #000000;
 }
 
 .remove-btn {
