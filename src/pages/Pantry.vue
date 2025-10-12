@@ -628,16 +628,23 @@ async function revokeUserAccess(user: SharedUser) {
   box-shadow: 0 4px 16px rgba(0,0,0,0.28);
 }
 .icon-btn {
-  background: transparent;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   border: none;
+  background: #9bd166;
+  color: #1f1f1f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  padding: 0;
-  margin: 0 4px;
-  color: #000;
-  transition: color 0.2s;
+  transition: filter 0.2s;
 }
 .icon-btn:hover {
-  color: #007bff;
+  filter: brightness(0.95);
+}
+.icon-btn:active {
+  filter: brightness(0.9);
 }
 .modal-bg {
   position: fixed;
