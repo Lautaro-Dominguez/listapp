@@ -78,11 +78,6 @@ const handleLogin = async () => {
         return
     }
 
-    if (password.value.length < 6) {
-        errorMessage.value = 'La contraseña debe tener al menos 6 caracteres'
-        return
-    }
-
     isLoading.value = true
     errorMessage.value = ''
 
