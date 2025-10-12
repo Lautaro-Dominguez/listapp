@@ -1,228 +1,510 @@
 <template>
   <BaseLayout>
-    <div class="products-wrapper">
+    <div class="lists-wrapper">
+      <div class="searchbar-container">
+        <SearchBar v-model="query" placeholder="Buscar listas" />
+      </div>
+      <!-- Mis Listas -->
       <section class="section">
         <h2 class="section-title">Listas</h2>
-        <div style="margin: 10px 6px 18px;">
-          <SearchBar v-model="searchQuery" placeholder="Buscar listas" />
-        </div>
-        <button class="fab-add-category" @click="showAddCategory = true">
-          <v-icon size="22" icon="mdi-plus" color="black" style="margin-right:8px" />
-          Nueva Lista
+        <button class="fab-add-list" @click="showAddList = true">
+         <v-icon size="22" icon="mdi-plus" color="black" style="margin-right:8px" />
+          Nueva lista.
         </button>
-        <div v-if="categories.length === 0" class="empty-products">
-          No hay Listas
+        <div v-if="loading" class="empty-lists">
+          Cargando listas...
         </div>
-        <div v-else-if="visibleCategories.length === 0 && searchQuery" class="empty-products">
-          No se encontraron resultados
+        <div v-else-if="displayedOwnLists.length === 0" class="empty-lists">
+          No hay listas.
         </div>
         <div v-else class="grid">
           <CollapsibleList
-            v-for="cat in visibleCategories"
-            :key="cat.id"
-            :title="cat.title"
-            :items="filteredItems(cat)"
-            v-model:collapsed="cat.collapsed"
-            @add="() => openAddProduct(cat.id)"
-            @edit="() => editCategory(cat)"
-            @remove="(item) => removeItem(cat, item as any)"
-            @edit-item="(item) => openEditProduct(cat, item as any)"
-            @update:title="(newTitle) => updateCategoryTitle(cat, newTitle)"
+            v-for="list in displayedOwnLists"
+            :key="list.id"
+            :title="list.title"
+            :items="filteredItems(list)"
+            :collapsed="list.collapsed"
+            @update:collapsed="list.collapsed = $event"
+            @add-item="openAddItem(list.id)"
+            @delete="openDeleteListConfirm(list)"
+            @edit="editList(list)"
+            @update:title="updateListTitle(list, $event)"
+            :showHeader="true"
           >
-            <template #item-left="{ item }">
-              <span class="emoji">{{ item.emoji || cat.emoji }}</span>
+            <template #header-actions>
+              <button class="icon-btn" @click="openShareList(list)" title="Compartir lista">
+                <span class="emoji">👥</span>
+              </button>
+              <button class="icon-btn" @click="purchaseList(list)" title="Marcar como comprada">
+                <span class="emoji">✅</span>
+              </button>
+              <button class="icon-btn" @click="resetList(list)" title="Reiniciar lista">
+                <span class="emoji">🔄</span>
+              </button>
+              <button class="icon-btn" @click="moveItemsToPantry(list)" title="Mover a despensa">
+                <span class="emoji">🏠</span>
+              </button>
+            </template>
+            <template #item="{ item }">
+              <ItemQtyActions
+                :item="item"
+                @inc="incQty(list, item)"
+                @dec="decQty(list, item)"
+              />
             </template>
           </CollapsibleList>
         </div>
-        <div v-if="showAddCategory">
-          <NewCategoryForm
-            @add="confirmAddCategoryForm"
-            @cancel="cancelAddCategory"
-          />
+      </section>
+
+      <!-- Listas Compartidas Conmigo -->
+      <section class="section">
+        <h2 class="section-title">Listas Compartidas Conmigo</h2>
+        <div v-if="loading" class="empty-lists">
+          Cargando listas compartidas...
         </div>
-        <div v-if="showAddProduct">
-          <NewProductForm
-            @add="confirmAddProductForm"
-            @cancel="cancelAddProduct"
-          />
+        <div v-else-if="displayedSharedLists.length === 0" class="empty-lists">
+          No tienes listas compartidas
         </div>
-        <div v-if="showEditProduct">
-          <NewProductForm
-            :edit="true"
-            :initial-name="editProductTarget!.item.label"
-            :initial-emoji="editProductTarget!.item.emoji as string"
-            @confirm="confirmEditProductForm"
-            @cancel="cancelEditProduct"
-          />
+        <div v-else class="grid">
+          <CollapsibleList
+            v-for="list in displayedSharedLists"
+            :key="list.id"
+            :title="list.title"
+            :items="filteredItems(list)"
+            :collapsed="list.collapsed"
+            @update:collapsed="list.collapsed = $event"
+            @add-item="openAddItem(list.id)"
+            :showHeader="true"
+          >
+            <template #header-actions>
+              <button class="icon-btn" @click="purchaseList(list)" title="Marcar como comprada">
+                <span class="emoji">✅</span>
+              </button>
+              <button class="icon-btn" @click="resetList(list)" title="Reiniciar lista">
+                <span class="emoji">🔄</span>
+              </button>
+            </template>
+            <template #item="{ item }">
+              <ItemQtyActions
+                :item="item"
+                @inc="incQty(list, item)"
+                @dec="decQty(list, item)"
+              />
+            </template>
+          </CollapsibleList>
         </div>
       </section>
+
+      <NewListForm 
+        v-if="showAddList"
+        @submit="confirmAddListForm"
+        @cancel="cancelAddList"
+      />
+      <div v-if="showAddItem">
+        <div class="modal-bg" @click.self="cancelAddItem">
+          <div class="modal">
+            <h3>Agregar Producto</h3>
+            <SelectProductForm
+              @submit="confirmAddItemForm"
+              @cancel="cancelAddItem"
+            />
+          </div>
+        </div>
+      </div>
+      <ConfirmDeleteModal
+        v-if="showDeleteListConfirm"
+        :title="`Eliminar Lista '${deletingList?.title}'`"
+        :message="`¿Estás seguro que deseas eliminar la lista '${deletingList?.title}'?`"
+        :submessage="'Esta acción no se puede deshacer.'"
+        @confirm="confirmDeleteList"
+        @cancel="cancelDeleteList"
+      >
+        <template #icon>
+          <span class="modal-icon-warning">⚠️</span>
+        </template>
+      </ConfirmDeleteModal>
+      <div v-if="showShareList">
+        <div class="modal-bg" @click.self="cancelShareList">
+          <div class="modal">
+            <h3>Compartir Lista</h3>
+            
+            <div v-if="shareError" class="error-message">{{ shareError }}</div>
+            <div v-if="shareSuccess" class="success-message">{{ shareSuccess }}</div>
+
+            <label>
+              Email del usuario
+              <input
+                type="email"
+                v-model="shareEmail"
+                placeholder="usuario@ejemplo.com"
+                @keyup.enter="confirmShareList"
+              >
+            </label>
+
+            <div class="modal-actions">
+              <button @click="confirmShareList" :disabled="sharingInProgress">
+                Compartir
+              </button>
+              <button @click="cancelShareList">Cancelar</button>
+            </div>
+
+            <div v-if="sharingInProgress" class="sharing-progress">
+              <div class="spinner"></div>
+              <span>Compartiendo lista...</span>
+            </div>
+
+            <div class="shared-users-section">
+              <h4>Compartido con:</h4>
+              <div v-if="loadingSharedUsers" class="loading-users">
+                Cargando usuarios...
+              </div>
+              <ul v-else-if="sharedUsersList.length > 0" class="shared-users-list">
+                <li v-for="user in sharedUsersList" :key="user.id" class="shared-user-item">
+                  <div class="user-info">
+                    <span class="user-icon">👤</span>
+                    <div class="user-details">
+                      <span class="user-name">{{ user.name }} {{ user.surname }}</span>
+                      <span class="user-email">{{ user.email }}</span>
+                    </div>
+                  </div>
+                  <button class="revoke-btn" @click="revokeUserAccess(user)" title="Revocar acceso">
+                    ❌
+                  </button>
+                </li>
+              </ul>
+              <div v-else class="empty-users">
+                Esta lista no está compartida con nadie
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </BaseLayout>
 </template>
 
 <script setup lang="ts">
-import BaseLayout from "@/layouts/BaseLayout.vue";
+import BaseLayout from '@/layouts/BaseLayout.vue'
 import CollapsibleList from '@/components/lists/CollapsibleList.vue'
-import NewProductForm from '@/components/NewProductForm.vue'
-import NewCategoryForm from '@/components/NewCategoryForm.vue'
+import ItemQtyActions from '@/components/ItemQtyActions.vue'
+import NewListForm from '@/components/NewListForm.vue'
+import SelectProductForm from '@/components/SelectProductForm.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import { ref, onMounted, computed } from 'vue'
+import { 
+  getShoppingLists, 
+  createShoppingList, 
+  updateShoppingList, 
+  deleteShoppingList, 
+  markListAsPurchased,
+  resetShoppingList,
+  moveListItemsToPantry,
+  shareShoppingList,
+  getSharedUsersForList,
+  revokeListAccess,
+  type ShoppingList as ApiShoppingList
+} from '@/utils/api'
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue'
 
-interface Item {
-  id: number;
-  label: string;
-  emoji?: string;
-  icon?: string;
-  [key: string]: unknown;
+type Item = { id: number; label: string; emoji?: string }
+type ItemQty = Item & { qty: number; productId?: number; unit: string }
+type List = {
+  id: number
+  title: string
+  description: string
+  recurring: boolean
+  items: ItemQty[]
+  collapsed: boolean
 }
-interface Category { id: number; title: string; emoji: string; items: Item[]; collapsed: boolean }
 
-const categories = ref<Category[]>([])
-const showAddCategory = ref(false)
-const addProductTarget = ref<number | null>(null)
-const showAddProduct = ref(false)
-const editProductTarget = ref<{ catId: number, item: Item } | null>(null)
-const showEditProduct = ref(false)
+type SharedUser = {
+  id: number
+  name: string
+  surname: string
+  email: string
+}
+
+const ownLists = ref<List[]>([])
+const sharedLists = ref<List[]>([])
+const showAddList = ref(false)
+const showAddItem = ref(false)
+const showShareList = ref(false)
+const showDeleteListConfirm = ref(false)
+const sharingList = ref<List | null>(null)
+const deletingList = ref<List | null>(null)
+const addItemTargetId = ref<number | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const shareEmail = ref('')
+const shareError = ref<string | null>(null)
+const shareSuccess = ref<string | null>(null)
+const sharedUsersList = ref<SharedUser[]>([])
+const loadingSharedUsers = ref(false)
+const sharingInProgress = ref(false)
 
-// búsqueda
-const searchQuery = ref('')
-const normalize = (s: string) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+// Search state
+const query = ref('')
+const hasQuery = computed(() => query.value.trim().length > 0)
 
-function filteredItems(cat: Category) {
-  const q = normalize(searchQuery.value)
-  if (!q) return cat.items
-  const titleMatch = normalize(cat.title).includes(q)
-  if (titleMatch) return cat.items
-  return cat.items.filter(i => normalize(i.label).includes(q) || (i.emoji && i.emoji.includes(searchQuery.value)))
+function normalizedQuery() {
+  return query.value.trim().toLowerCase()
 }
 
-const visibleCategories = computed(() => {
-  const q = normalize(searchQuery.value)
-  if (!q) return categories.value
-  return categories.value.filter(c => filteredItems(c).length > 0)
+function listMatches(list: List) {
+  const q = normalizedQuery()
+  if (!q) return true
+  const titleMatch = list.title.toLowerCase().includes(q)
+  const itemMatch = list.items.some(i => (i.label || '').toLowerCase().includes(q))
+  return titleMatch || itemMatch
+}
+
+function filteredItems(list: List) {
+  const q = normalizedQuery()
+  if (!q) return list.items
+  return list.items.filter(i => (i.label || '').toLowerCase().includes(q))
+}
+
+const displayedOwnLists = computed(() => {
+  const q = normalizedQuery()
+  if (!q) return ownLists.value
+  return ownLists.value.filter(listMatches)
 })
 
-async function fetchCategoriesAndProducts() {
+const displayedSharedLists = computed(() => {
+  const q = normalizedQuery()
+  if (!q) return sharedLists.value
+  return sharedLists.value.filter(listMatches)
+})
+
+function mapApiListToView(apiList: ApiShoppingList): List {
+  return {
+    id: apiList.id!,
+    title: apiList.name,
+    description: apiList.description || '',
+    recurring: apiList.recurring,
+    items: [], // You'll need to implement the items API
+    collapsed: false
+  }
+}
+
+async function fetchLists() {
   loading.value = true
   error.value = null
   try {
-    const response = await fetch('/api/categories')
-    if (!response.ok) throw new Error('Error al cargar las categorías')
-    categories.value = await response.json()
+    // Fetch own lists
+    const ownListsData = await getShoppingLists({ owner: true })
+    ownLists.value = ownListsData.map(mapApiListToView)
+
+    // Fetch shared lists
+    const sharedListsData = await getShoppingLists({ owner: false })
+    sharedLists.value = sharedListsData.map(mapApiListToView)
   } catch (e: any) {
-    error.value = e.message || 'Error al cargar las listas'
+    if (e.status === 401) {
+      error.value = 'No estás autorizado. Por favor, inicia sesión.'
+    } else if (e.status === 500) {
+      error.value = 'Error del servidor al cargar listas.'
+    } else {
+      error.value = e.message || 'Error al cargar listas'
+    }
+    console.error('Error al cargar listas:', e)
   } finally {
     loading.value = false
   }
 }
 
-onMounted(fetchCategoriesAndProducts)
+onMounted(fetchLists)
 
-function openAddProduct(categoryId: number) {
-  addProductTarget.value = categoryId
-  showAddProduct.value = true
-}
-
-async function confirmAddProductForm({ name, emoji }: { name: string; emoji: string }) {
-  if (addProductTarget.value === null || !name) return
-  const cat = categories.value.find(c => c.id === addProductTarget.value)
-  if (!cat) return
+async function confirmAddListForm(formData: { name: string; description: string; recurring: boolean; metadata: Record<string, any> }) {
+  if (!formData.name) return
   try {
-    const newItem = {
-      id: Date.now(),
-      label: name,
-      emoji: emoji || '🆕'
-    }
-    cat.items.push(newItem)
-  } catch (e: any) {
-    error.value = e.message || 'Error al agregar item a la lista'
-  }
-  showAddProduct.value = false
-  addProductTarget.value = null
-}
-
-function cancelAddProduct() {
-  showAddProduct.value = false
-  addProductTarget.value = null
-}
-
-async function confirmAddCategoryForm({ name }: { name: string }) {
-  if (!name) return
-  try {
-    const newCategory = {
-      id: Date.now(),
-      title: name,
-      emoji: '📝',
-      items: [],
-      collapsed: false
-    }
-    categories.value.push(newCategory)
+    const created = await createShoppingList(formData)
+    ownLists.value.push(mapApiListToView(created))
   } catch (e: any) {
     error.value = e.message || 'Error al crear lista'
   }
-  showAddCategory.value = false
+  showAddList.value = false
 }
 
-function cancelAddCategory() {
-  showAddCategory.value = false
+function cancelAddList() {
+  showAddList.value = false
 }
 
-function editCategory(_cat: Category) { /* reserved for future */ }
+function openAddItem(listId: number) {
+  addItemTargetId.value = listId
+  showAddItem.value = true
+}
 
-async function removeItem(cat: Category, item: Item) {
-  const index = categories.value.findIndex(c => c.id === cat.id)
-  if (index !== -1 && categories.value[index]?.items) {
-    try {
-      categories.value[index].items = categories.value[index].items.filter(i => i.id !== item.id)
-    } catch (e: any) {
-      error.value = e.message || 'Error al eliminar item'
+async function confirmAddItemForm({ productId, quantity }: { productId: number; quantity: number }) {
+  // Implement when you have the list items API
+}
+
+function cancelAddItem() {
+  showAddItem.value = false
+  addItemTargetId.value = null
+}
+
+function editList(_list: List) {
+  // Inline editing handled by CollapsibleList via startEdit and @update:title
+}
+
+async function updateListTitle(list: List, newTitle: string) {
+  try {
+    const updated = await updateShoppingList(list.id, { 
+      name: newTitle,
+      description: list.description,
+      recurring: list.recurring
+    })
+    list.title = updated.name
+  } catch (e: any) {
+    error.value = e.message || 'Error al actualizar lista'
+  }
+}
+
+async function incQty(list: List, item: Item) {
+  // Implement when you have the list items API
+}
+
+async function decQty(list: List, item: Item) {
+  // Implement when you have the list items API
+}
+
+function openDeleteListConfirm(list: List) {
+  deletingList.value = list
+  showDeleteListConfirm.value = true
+}
+
+async function confirmDeleteList() {
+  if (!deletingList.value) return
+
+  try {
+    await deleteShoppingList(deletingList.value.id)
+    ownLists.value = ownLists.value.filter(p => p.id !== deletingList.value!.id)
+    showDeleteListConfirm.value = false
+    deletingList.value = null
+  } catch (e: any) {
+    error.value = e.message || 'Error al eliminar lista'
+    console.error('Error al eliminar lista:', e)
+  }
+}
+
+function cancelDeleteList() {
+  showDeleteListConfirm.value = false
+  deletingList.value = null
+}
+
+async function openShareList(list: List) {
+  sharingList.value = list
+  shareEmail.value = ''
+  shareError.value = null
+  shareSuccess.value = null
+  showShareList.value = true
+
+  await loadSharedUsers(list.id)
+}
+
+async function loadSharedUsers(listId: number) {
+  loadingSharedUsers.value = true
+  try {
+    const users = await getSharedUsersForList(listId)
+    sharedUsersList.value = Array.isArray(users) ? users : []
+  } catch (e: any) {
+    console.error('Error al cargar usuarios compartidos:', e)
+    sharedUsersList.value = []
+  } finally {
+    loadingSharedUsers.value = false
+  }
+}
+
+async function confirmShareList() {
+  if (!shareEmail.value) {
+    shareError.value = 'Ingresa un email para compartir la lista'
+    return
+  }
+
+  if (!sharingList.value) return
+
+  sharingInProgress.value = true
+  shareError.value = null
+  shareSuccess.value = null
+
+  try {
+    await shareShoppingList(sharingList.value.id, shareEmail.value)
+
+    shareSuccess.value = 'Lista compartida con éxito'
+    shareError.value = null
+    shareEmail.value = ''
+
+    await loadSharedUsers(sharingList.value.id)
+  } catch (e: any) {
+    if (e.status === 404) {
+      shareError.value = 'Usuario no encontrado'
+    } else if (e.status === 409) {
+      shareError.value = 'Esta lista ya está compartida con ese usuario'
+    } else {
+      shareError.value = e.message || 'Error al compartir lista'
     }
+  } finally {
+    sharingInProgress.value = false
   }
 }
 
-function openEditProduct(cat: Category, item: Item) {
-  editProductTarget.value = { catId: cat.id, item }
-  showEditProduct.value = true
+function cancelShareList() {
+  showShareList.value = false
+  sharingList.value = null
+  shareEmail.value = ''
+  shareError.value = null
+  shareSuccess.value = null
+  sharedUsersList.value = []
 }
 
-async function confirmEditProductForm({ name, emoji }: { name: string; emoji: string }) {
-  if (!editProductTarget.value || !name) return
-  const cat = categories.value.find(c => c.id === editProductTarget.value!.catId)
-  if (!cat) return
-  const item = cat.items.find(i => i.id === editProductTarget.value!.item.id)
-  if (!item) return
+async function revokeUserAccess(user: SharedUser) {
   try {
-    item.label = name
-    item.emoji = emoji || item.emoji
+    if (!sharingList.value) return
+
+    await revokeListAccess(sharingList.value.id, user.id)
+    await loadSharedUsers(sharingList.value.id)
   } catch (e: any) {
-    error.value = e.message || 'Error al actualizar item'
+    console.error('Error al revocar acceso:', e)
+    shareError.value = e.message || 'Error al revocar acceso'
   }
-  showEditProduct.value = false
-  editProductTarget.value = null
 }
 
-function cancelEditProduct() {
-  showEditProduct.value = false
-  editProductTarget.value = null
-}
-
-async function updateCategoryTitle(cat: Category, newTitle: string) {
+async function purchaseList(list: List) {
   try {
-    const category = categories.value.find(c => c.id === cat.id)
-    if (category) category.title = newTitle
+    await markListAsPurchased(list.id, {})
+    // You might want to refresh the list or update its state here
   } catch (e: any) {
-    error.value = e.message || 'Error al actualizar título de la lista'
+    error.value = e.message || 'Error al marcar lista como comprada'
+  }
+}
+
+async function resetList(list: List) {
+  try {
+    await resetShoppingList(list.id)
+    // You might want to refresh the list or update its state here
+  } catch (e: any) {
+    error.value = e.message || 'Error al reiniciar lista'
+  }
+}
+
+async function moveItemsToPantry(list: List) {
+  try {
+    await moveListItemsToPantry(list.id)
+    // You might want to refresh both the list and pantry here
+  } catch (e: any) {
+    error.value = e.message || 'Error al mover items a la despensa'
   }
 }
 </script>
 
 <style scoped>
-.products-wrapper {
+.lists-wrapper {
   max-width: 980px;
   margin: 0 auto;
   padding: 24px 16px;
+}
+.searchbar-container {
+  margin: 8px 6px 16px;
 }
 .section {
   margin-bottom: 36px;
@@ -239,19 +521,19 @@ async function updateCategoryTitle(cat: Category, newTitle: string) {
   gap: 16px;
 }
 .emoji {
-  font-size: 26px;
+  font-size: 24px;
   width: 30px;
   display: inline-block;
   text-align: center;
 }
-.empty-products {
+.empty-lists {
   text-align: center;
   color: #647060;
   font-size: 20px;
   font-style: italic;
   margin: 32px 0 24px 0;
 }
-.fab-add-category {
+.fab-add-list {
   position: fixed;
   right: 32px;
   bottom: 32px;
@@ -269,7 +551,230 @@ async function updateCategoryTitle(cat: Category, newTitle: string) {
   cursor: pointer;
   transition: box-shadow 0.2s;
 }
-.fab-add-category:hover {
+.fab-add-list:hover {
   box-shadow: 0 4px 16px rgba(0,0,0,0.28);
+}
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: #9bd166;
+  color: #1f1f1f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+.icon-btn:hover {
+  filter: brightness(0.95);
+}
+.icon-btn:active {
+  filter: brightness(0.9);
+}
+.modal-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+.modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px 28px 18px;
+  min-width: 260px;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.modal h3 {
+  margin: 0 0 8px;
+  font-size: 20px;
+  color: #1f1f1f;
+  justify-content: center;
+  text-align: center;
+}
+.modal label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 15px;
+}
+.modal input {
+  font-size: 16px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #bbb;
+  color: #222;
+  background: #fff;
+}
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.modal-actions button {
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: none;
+  background: #eee;
+  color: #222;
+  font-weight: 600;
+  cursor: pointer;
+}
+.modal-actions button:first-child {
+  background: #000;
+  color: #fff;
+}
+.error-message {
+  color: #e74c3c;
+  font-size: 14px;
+  padding: 8px 12px;
+  background: #ffebee;
+  border-radius: 4px;
+  border-left: 3px solid #e74c3c;
+}
+.success-message {
+  color: #2ecc71;
+  font-size: 14px;
+  padding: 8px 12px;
+  background: #e8f5e9;
+  border-radius: 4px;
+  border-left: 3px solid #2ecc71;
+}
+.shared-users-section {
+  margin-top: 16px;
+}
+.shared-users-section h4 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #333;
+}
+.shared-users-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.shared-user-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+.shared-user-item:last-child {
+  border-bottom: none;
+}
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.user-icon {
+  font-size: 20px;
+}
+.user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.user-name {
+  font-weight: 500;
+  color: #111;
+}
+.user-email {
+  font-size: 14px;
+  color: #555;
+}
+.loading-users {
+  text-align: center;
+  color: #999;
+  font-size: 16px;
+  padding: 12px 0;
+}
+.empty-users {
+  text-align: center;
+  color: #999;
+  font-size: 16px;
+  padding: 12px 0;
+}
+.revoke-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-left: auto;
+  color: #e74c3c;
+  transition: color 0.2s;
+}
+.revoke-btn:hover {
+  color: #c0392b;
+}
+.modal-delete {
+  text-align: center;
+  max-width: 450px;
+}
+.modal-icon-warning {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+.modal-message {
+  font-size: 16px;
+  color: #333;
+  margin: 12px 0;
+  line-height: 1.5;
+}
+.modal-message strong {
+  color: #000;
+  font-weight: 600;
+}
+.modal-submessage {
+  font-size: 14px;
+  color: #666;
+  margin: 8px 0 16px;
+  line-height: 1.4;
+}
+.btn-delete {
+  background: #e74c3c !important;
+  color: #fff !important;
+}
+.btn-delete:hover {
+  background: #c0392b !important;
+}
+.btn-cancel {
+  background: #eee !important;
+  color: #222 !important;
+}
+.btn-cancel:hover {
+  background: #ddd !important;
+}
+.sharing-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #333;
+  margin-top: 8px;
+}
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #9bd166;
+  border-top: 2px solid #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 </style>

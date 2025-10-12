@@ -14,6 +14,7 @@ declare module 'vue' {
     EditProfileForm: typeof import('./src/components/EditProfileForm.vue')['default']
     ItemQtyActions: typeof import('./src/components/ItemQtyActions.vue')['default']
     NewCategoryForm: typeof import('./src/components/NewCategoryForm.vue')['default']
+    NewListForm: typeof import('./src/components/NewListForm.vue')['default']
     NewProductForm: typeof import('./src/components/NewProductForm.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']

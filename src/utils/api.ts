@@ -15,7 +15,8 @@ export const API_ENDPOINTS = {
   PRODUCTS: '/api/products',
   CATEGORIES: '/api/categories',
   PANTRIES: '/api/pantries',
-  PANTRY_ITEMS: '/api/pantries'
+  PANTRY_ITEMS: '/api/pantries',
+  SHOPPING_LISTS: '/api/shopping-lists'
 }
 
 // Helper function to build full API URLs
@@ -301,6 +302,114 @@ export async function updatePantryItem(pantryId: number, itemId: number, data: a
 
 export async function deletePantryItem(pantryId: number, itemId: number) {
   return apiRequest(`${API_ENDPOINTS.PANTRY_ITEMS}/${pantryId}/items/${itemId}`, {
+    method: 'DELETE'
+  })
+}
+
+// Shopping Lists API
+
+export interface ShoppingList {
+  id?: number
+  name: string
+  description?: string
+  recurring: boolean
+  metadata?: Record<string, any>
+  owner?: {
+    id: number
+    name: string
+    surname: string
+    email: string
+    metadata: Record<string, any>
+    createdAt: string
+    updatedAt: string
+  }
+  sharedWith?: Array<{
+    id: number
+    name: string
+    surname: string
+    email: string
+  }>
+  lastPurchasedAt?: string
+  createdAt?: string
+  updatedAt?: string
+}
+
+export async function getShoppingLists(params: Record<string, any> = {}) {
+  const url = new URL(buildApiUrl(API_ENDPOINTS.SHOPPING_LISTS))
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null) {
+      url.searchParams.append(k, String(v))
+    }
+  })
+  const result = await apiRequest<ShoppingList[]>(url.pathname + url.search, { method: 'GET' })
+  return normalizeArrayResponse<ShoppingList>(result)
+}
+
+export async function getShoppingListById(id: number) {
+  return apiRequest<ShoppingList>(`${API_ENDPOINTS.SHOPPING_LISTS}/${id}`, {
+    method: 'GET'
+  })
+}
+
+export async function createShoppingList(data: Omit<ShoppingList, 'id' | 'owner' | 'sharedWith' | 'lastPurchasedAt' | 'createdAt' | 'updatedAt'>) {
+  return apiRequest<ShoppingList>(API_ENDPOINTS.SHOPPING_LISTS, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+}
+
+export async function updateShoppingList(id: number, data: Partial<Omit<ShoppingList, 'id' | 'owner' | 'sharedWith' | 'lastPurchasedAt' | 'createdAt' | 'updatedAt'>>) {
+  return apiRequest<ShoppingList>(`${API_ENDPOINTS.SHOPPING_LISTS}/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  })
+}
+
+export async function deleteShoppingList(id: number) {
+  return apiRequest(`${API_ENDPOINTS.SHOPPING_LISTS}/${id}`, {
+    method: 'DELETE'
+  })
+}
+
+export async function markListAsPurchased(id: number, metadata: Record<string, any> = {}) {
+  return apiRequest(`${API_ENDPOINTS.SHOPPING_LISTS}/${id}/purchase`, {
+    method: 'POST',
+    body: JSON.stringify({ metadata })
+  })
+}
+
+export async function resetShoppingList(id: number) {
+  return apiRequest(`${API_ENDPOINTS.SHOPPING_LISTS}/${id}/reset`, {
+    method: 'POST'
+  })
+}
+
+export async function moveListItemsToPantry(id: number) {
+  return apiRequest(`${API_ENDPOINTS.SHOPPING_LISTS}/${id}/move-to-pantry`, {
+    method: 'POST'
+  })
+}
+
+export async function shareShoppingList(id: number, email: string) {
+  return apiRequest(`${API_ENDPOINTS.SHOPPING_LISTS}/${id}/share`, {
+    method: 'POST',
+    body: JSON.stringify({ email })
+  })
+}
+
+export async function getSharedUsersForList(id: number) {
+  return apiRequest<Array<{
+    id: number
+    name: string
+    surname: string
+    email: string
+  }>>(`${API_ENDPOINTS.SHOPPING_LISTS}/${id}/shared-users`, {
+    method: 'GET'
+  })
+}
+
+export async function revokeListAccess(listId: number, userId: number) {
+  return apiRequest(`${API_ENDPOINTS.SHOPPING_LISTS}/${listId}/share/${userId}`, {
     method: 'DELETE'
   })
 }
