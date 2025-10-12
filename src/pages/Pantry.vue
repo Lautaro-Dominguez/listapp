@@ -30,11 +30,11 @@
             @update:title="(newTitle) => updatePantryTitle(pantry, newTitle)"
             item-key-field="id"
           >
-            <template #header-actions="{ toggle, collapsed }">
+            <template #header-actions="{ toggle, collapsed, startEdit }">
               <button class="icon-btn" aria-label="Agregar" @click="openAddItem(pantry.id)">
                 <v-icon size="22" icon="mdi-plus" />
               </button>
-              <button class="icon-btn" aria-label="Editar" @click="editPantry(pantry)">
+              <button class="icon-btn" aria-label="Editar" @click="startEdit()">
                 <v-icon size="22" icon="mdi-pencil-outline" />
               </button>
               <button class="icon-btn" aria-label="Compartir" @click="openSharePantry(pantry)">
@@ -113,24 +113,6 @@
           @add="confirmAddItemForm"
           @cancel="cancelAddItem"
         />
-      </div>
-      <div v-if="showEditPantry">
-        <div class="modal-bg" @click="cancelEditPantry">
-          <div class="modal" @click.stop>
-            <h3>Editar Despensa</h3>
-            <label>Nombre:<input
-                v-model="editPantryName"
-                placeholder="Nombre de la despensa"
-                @keyup.enter="confirmEditPantry"
-                autofocus
-              /></label>
-            <div v-if="error" class="error-message">{{ error }}</div>
-            <div class="modal-actions">
-              <button @click="confirmEditPantry">Guardar</button>
-              <button @click="cancelEditPantry">Cancelar</button>
-            </div>
-          </div>
-        </div>
       </div>
       <ConfirmDeleteModal
         v-if="showDeletePantryConfirm"
@@ -248,13 +230,10 @@ const ownPantries = ref<Pantry[]>([])
 const sharedPantries = ref<Pantry[]>([])
 const showAddPantry = ref(false)
 const showAddItem = ref(false)
-const showEditPantry = ref(false)
 const showSharePantry = ref(false)
 const showDeletePantryConfirm = ref(false)
-const editingPantry = ref<Pantry | null>(null)
 const sharingPantry = ref<Pantry | null>(null)
 const deletingPantry = ref<Pantry | null>(null)
-const editPantryName = ref('')
 const addItemTargetId = ref<number | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
@@ -532,10 +511,8 @@ async function removeItem(pantry: Pantry, item: ItemQty) {
   }
 }
 
-function editPantry(pantry: Pantry) {
-  editingPantry.value = pantry
-  editPantryName.value = pantry.title
-  showEditPantry.value = true
+function editPantry(_pantry: Pantry) {
+  // Inline editing handled by CollapsibleList via startEdit and @update:title
 }
 
 async function updatePantryTitle(pantry: Pantry, newTitle: string) {
@@ -545,40 +522,6 @@ async function updatePantryTitle(pantry: Pantry, newTitle: string) {
   } catch (e: any) {
     error.value = e.message || 'Error al actualizar despensa'
   }
-}
-
-async function confirmEditPantry() {
-  if (!editingPantry.value || !editPantryName.value) return
-
-  try {
-    const updated = await updatePantry(editingPantry.value.id, {
-      name: editPantryName.value,
-      metadata: {}
-    })
-    editingPantry.value.title = updated.name
-    error.value = null
-  } catch (e: any) {
-    if (e.status === 403) {
-      error.value = 'No tienes permisos para editar esta despensa'
-    } else if (e.status === 409) {
-      error.value = 'Ya existe una despensa con ese nombre'
-    } else {
-      error.value = e.message || 'Error al actualizar despensa'
-    }
-    console.error('Error al editar despensa:', e)
-    return
-  }
-
-  showEditPantry.value = false
-  editingPantry.value = null
-  editPantryName.value = ''
-}
-
-function cancelEditPantry() {
-  showEditPantry.value = false
-  editingPantry.value = null
-  editPantryName.value = ''
-  error.value = null
 }
 
 async function incQty(pantry: Pantry, item: Item) {
