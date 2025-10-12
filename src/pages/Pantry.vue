@@ -1,6 +1,9 @@
 <template>
   <BaseLayout>
     <div class="despensa-wrapper">
+      <div class="searchbar-container">
+        <SearchBar v-model="query" placeholder="Buscar despensas" />
+      </div>
       <!-- Mis Despensas -->
       <section class="section">
         <h2 class="section-title">Mis Despensas</h2>
@@ -11,15 +14,15 @@
         <div v-if="loading" class="empty-pantries">
           Cargando...
         </div>
-        <div v-else-if="ownPantries.length === 0" class="empty-pantries">
-          No hay despensas
+        <div v-else-if="displayedOwnPantries.length === 0" class="empty-pantries">
+          {{ hasQuery ? 'No se encontraron resultados' : 'No hay despensas' }}
         </div>
         <div v-else class="grid">
           <CollapsibleList
-            v-for="pantry in ownPantries"
+            v-for="pantry in displayedOwnPantries"
             :key="pantry.id"
             :title="pantry.title"
-            :items="pantry.items"
+            :items="filteredItems(pantry)"
             v-model:collapsed="pantry.collapsed"
             @add="() => openAddItem(pantry.id)"
             @remove="(item) => removeItem(pantry, item as any)"
@@ -54,7 +57,7 @@
                 :onDec="() => decQty(pantry, item as any)"
               />
             </template>
-            <template #empty>No hay productos</template>
+            <template #empty>{{ hasQuery ? 'Sin coincidencias' : 'No hay productos' }}</template>
           </CollapsibleList>
         </div>
       </section>
@@ -65,15 +68,15 @@
         <div v-if="loading" class="empty-pantries">
           Cargando...
         </div>
-        <div v-else-if="sharedPantries.length === 0" class="empty-pantries">
-          No hay despensas compartidas
+        <div v-else-if="displayedSharedPantries.length === 0" class="empty-pantries">
+          {{ hasQuery ? 'No se encontraron resultados' : 'No hay despensas compartidas' }}
         </div>
         <div v-else class="grid">
           <CollapsibleList
-            v-for="pantry in sharedPantries"
+            v-for="pantry in displayedSharedPantries"
             :key="pantry.id"
             :title="pantry.title"
-            :items="pantry.items"
+            :items="filteredItems(pantry)"
             v-model:collapsed="pantry.collapsed"
             @remove="(item) => removeItem(pantry, item as any)"
             @update:title="(newTitle) => updatePantryTitle(pantry, newTitle)"
@@ -94,7 +97,7 @@
                 :onDec="() => decQty(pantry, item as any)"
               />
             </template>
-            <template #empty>No hay productos</template>
+            <template #empty>{{ hasQuery ? 'Sin coincidencias' : 'No hay productos' }}</template>
           </CollapsibleList>
         </div>
       </section>
@@ -223,7 +226,8 @@ import CollapsibleList from '@/components/lists/CollapsibleList.vue'
 import ItemQtyActions from '@/components/ItemQtyActions.vue'
 import NewCategoryForm from '@/components/NewCategoryForm.vue'
 import SelectProductForm from '@/components/SelectProductForm.vue'
-import { ref, onMounted } from 'vue'
+import SearchBar from '@/components/SearchBar.vue'
+import { ref, onMounted, computed } from 'vue'
 import { getPantries, createPantry, updatePantry, deletePantry, getPantryItems, createPantryItem, updatePantryItem, deletePantryItem, sharePantry, getSharedUsers, revokeSharePantry } from '@/utils/api'
 
 type Item = { id: number; label: string; emoji?: string }
@@ -266,6 +270,40 @@ const shareSuccess = ref<string | null>(null)
 const sharedUsersList = ref<SharedUser[]>([])
 const loadingSharedUsers = ref(false)
 const sharingInProgress = ref(false)
+
+// Search state
+const query = ref('')
+const hasQuery = computed(() => query.value.trim().length > 0)
+
+function normalizedQuery() {
+  return query.value.trim().toLowerCase()
+}
+
+function pantryMatches(pantry: Pantry) {
+  const q = normalizedQuery()
+  if (!q) return true
+  const titleMatch = pantry.title.toLowerCase().includes(q)
+  const itemMatch = pantry.items.some(i => (i.label || '').toLowerCase().includes(q))
+  return titleMatch || itemMatch
+}
+
+function filteredItems(pantry: Pantry) {
+  const q = normalizedQuery()
+  if (!q) return pantry.items
+  return pantry.items.filter(i => (i.label || '').toLowerCase().includes(q))
+}
+
+const displayedOwnPantries = computed(() => {
+  const q = normalizedQuery()
+  if (!q) return ownPantries.value
+  return ownPantries.value.filter(pantryMatches)
+})
+
+const displayedSharedPantries = computed(() => {
+  const q = normalizedQuery()
+  if (!q) return sharedPantries.value
+  return sharedPantries.value.filter(pantryMatches)
+})
 
 async function fetchPantriesAndItems() {
   loading.value = true
@@ -690,6 +728,9 @@ async function revokeUserAccess(user: SharedUser) {
   max-width: 980px;
   margin: 0 auto;
   padding: 24px 16px;
+}
+.searchbar-container {
+  margin: 8px 6px 16px;
 }
 .section {
   margin-bottom: 36px;
