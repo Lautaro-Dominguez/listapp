@@ -3,6 +3,9 @@
     <div class="products-wrapper">
       <section class="section">
         <h2 class="section-title">Mis Productos</h2>
+        <div style="margin: 10px 6px 18px;">
+          <SearchBar v-model="searchQuery" placeholder="Buscar productos" />
+        </div>
         <button class="fab-add-category" @click="showAddCategory = true">
           <v-icon size="22" icon="mdi-plus" color="black" style="margin-right:8px" />
           Nueva categoría
@@ -10,12 +13,15 @@
         <div v-if="categories.length === 0" class="empty-products">
           No hay productos
         </div>
+        <div v-else-if="visibleCategories.length === 0 && searchQuery" class="empty-products">
+          No se encontraron resultados
+        </div>
         <div v-else class="grid">
           <CollapsibleList
-            v-for="cat in categories"
+            v-for="cat in visibleCategories"
             :key="cat.id"
             :title="cat.title"
-            :items="cat.items"
+            :items="filteredItems(cat)"
             v-model:collapsed="cat.collapsed"
             @add="() => openAddProduct(cat.id)"
             @edit="() => editCategory()"
@@ -76,7 +82,8 @@ import BaseLayout from "@/layouts/BaseLayout.vue";
 import CollapsibleList from '@/components/lists/CollapsibleList.vue'
 import NewProductForm from '@/components/NewProductForm.vue'
 import NewCategoryForm from '@/components/NewCategoryForm.vue'
-import { ref, onMounted } from 'vue'
+import SearchBar from '@/components/SearchBar.vue'
+import { ref, onMounted, computed } from 'vue'
 import { getProducts, createProduct, updateProduct, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory } from '@/utils/api'
 
 type Item = { id: number; label: string; emoji: string }
@@ -90,6 +97,24 @@ const editProductTarget = ref<{ catId: number, item: Item } | null>(null)
 const showEditProduct = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+// búsqueda
+const searchQuery = ref('')
+const normalize = (s: string) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+function filteredItems(cat: Category) {
+  const q = normalize(searchQuery.value)
+  if (!q) return cat.items
+  const titleMatch = normalize(cat.title).includes(q)
+  if (titleMatch) return cat.items
+  return cat.items.filter(i => normalize(i.label).includes(q) || (i.emoji && i.emoji.includes(searchQuery.value)))
+}
+
+const visibleCategories = computed(() => {
+  const q = normalize(searchQuery.value)
+  if (!q) return categories.value
+  return categories.value.filter(c => filteredItems(c).length > 0)
+})
 
 async function fetchCategoriesAndProducts() {
   loading.value = true
@@ -194,8 +219,7 @@ async function confirmEditProductForm({ name, emoji }: { name: string; emoji: st
       metadata: emoji ? { emoji } : {}
     })
     prod.label = updated.name
-    const updatedEmoji = (updated.metadata && (updated.metadata.emoji as string)) || emoji || prod.emoji
-    prod.emoji = updatedEmoji
+    prod.emoji = (updated.metadata && (updated.metadata.emoji as string)) || emoji || prod.emoji
   } catch (e: any) {
     error.value = e.message || 'Error al actualizar producto'
   }
@@ -232,12 +256,12 @@ async function deleteCategoryHandler(cat: Category) {
       showEditProduct.value = false
     }
   } catch (e: any) {
-    if (e.status === 409) {
+    if ((e as any).status === 409) {
       error.value = 'No se puede eliminar la categoría porque tiene productos asociados'
-    } else if (e.status === 404) {
+    } else if ((e as any).status === 404) {
       error.value = 'La categoría no existe o no te pertenece'
     } else {
-      error.value = e.message || 'Error al eliminar categoría'
+      error.value = (e as any).message || 'Error al eliminar categoría'
     }
   }
 }

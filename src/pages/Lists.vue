@@ -3,6 +3,9 @@
     <div class="products-wrapper">
       <section class="section">
         <h2 class="section-title">Mis Listas</h2>
+        <div style="margin: 10px 6px 18px;">
+          <SearchBar v-model="searchQuery" placeholder="Buscar listas" />
+        </div>
         <button class="fab-add-category" @click="showAddCategory = true">
           <v-icon size="22" icon="mdi-plus" color="black" style="margin-right:8px" />
           Nueva Lista
@@ -10,17 +13,20 @@
         <div v-if="categories.length === 0" class="empty-products">
           No hay Listas
         </div>
+        <div v-else-if="visibleCategories.length === 0 && searchQuery" class="empty-products">
+          No se encontraron resultados
+        </div>
         <div v-else class="grid">
           <CollapsibleList
-            v-for="cat in categories"
+            v-for="cat in visibleCategories"
             :key="cat.id"
             :title="cat.title"
-            :items="cat.items"
+            :items="filteredItems(cat)"
             v-model:collapsed="cat.collapsed"
             @add="() => openAddProduct(cat.id)"
             @edit="() => editCategory(cat)"
-            @remove="(item) => removeItem(cat, item)"
-            @edit-item="(item) => openEditProduct(cat, item)"
+            @remove="(item) => removeItem(cat, item as any)"
+            @edit-item="(item) => openEditProduct(cat, item as any)"
             @update:title="(newTitle) => updateCategoryTitle(cat, newTitle)"
           >
             <template #item-left="{ item }">
@@ -44,7 +50,7 @@
           <NewProductForm
             :edit="true"
             :initial-name="editProductTarget!.item.label"
-            :initial-emoji="editProductTarget!.item.emoji"
+            :initial-emoji="editProductTarget!.item.emoji as string"
             @confirm="confirmEditProductForm"
             @cancel="cancelEditProduct"
           />
@@ -59,7 +65,8 @@ import BaseLayout from "@/layouts/BaseLayout.vue";
 import CollapsibleList from '@/components/lists/CollapsibleList.vue'
 import NewProductForm from '@/components/NewProductForm.vue'
 import NewCategoryForm from '@/components/NewCategoryForm.vue'
-import { ref, onMounted } from 'vue'
+import SearchBar from '@/components/SearchBar.vue'
+import { ref, onMounted, computed } from 'vue'
 
 interface Item {
   id: number;
@@ -78,6 +85,24 @@ const editProductTarget = ref<{ catId: number, item: Item } | null>(null)
 const showEditProduct = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
+
+// búsqueda
+const searchQuery = ref('')
+const normalize = (s: string) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+function filteredItems(cat: Category) {
+  const q = normalize(searchQuery.value)
+  if (!q) return cat.items
+  const titleMatch = normalize(cat.title).includes(q)
+  if (titleMatch) return cat.items
+  return cat.items.filter(i => normalize(i.label).includes(q) || (i.emoji && i.emoji.includes(searchQuery.value)))
+}
+
+const visibleCategories = computed(() => {
+  const q = normalize(searchQuery.value)
+  if (!q) return categories.value
+  return categories.value.filter(c => filteredItems(c).length > 0)
+})
 
 async function fetchCategoriesAndProducts() {
   loading.value = true
@@ -144,7 +169,7 @@ function cancelAddCategory() {
   showAddCategory.value = false
 }
 
-function editCategory(cat: Category) { /* reserved for future */ }
+function editCategory(_cat: Category) { /* reserved for future */ }
 
 async function removeItem(cat: Category, item: Item) {
   const index = categories.value.findIndex(c => c.id === cat.id)
