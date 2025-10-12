@@ -231,13 +231,16 @@ async function confirmEditProductForm({ name, emoji }: { name: string; emoji: st
   const prod = cat.items.find((i: Item) => i.id === editProductTarget.value!.item.id)
   if (!prod) return
   try {
-    const updated = await updateProduct(prod.id, {
+    await updateProduct(prod.id, {
       name,
       category: { id: cat.id },
       metadata: emoji ? { emoji } : {}
     })
-    prod.label = updated.name
-    prod.emoji = (updated.metadata && (updated.metadata.emoji as string)) || emoji || prod.emoji
+    // local update para reflejar los cambios ni bien se hacen
+    prod.label = name
+    if (emoji) {
+      prod.emoji = emoji
+    }
   } catch (e: any) {
     error.value = e.message || 'Error al actualizar producto'
   }
