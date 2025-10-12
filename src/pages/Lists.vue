@@ -9,7 +9,7 @@
         <h2 class="section-title">Listas</h2>
         <button class="fab-add-list" @click="showAddList = true">
          <v-icon size="22" icon="mdi-plus" color="black" style="margin-right:8px" />
-          Nueva lista.
+          Nueva lista
         </button>
         <div v-if="loading" class="empty-lists">
           Cargando listas...
