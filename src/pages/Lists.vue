@@ -50,6 +50,7 @@
                 <v-icon size="22" icon="mdi-pencil-outline" />
               </button>
               <button class="icon-btn" aria-label="Compartir" @click="openShareList(list)">
+              <button class="icon-btn" aria-label="Compartir" @click="openShareList(list)">
                 <v-icon size="22" icon="mdi-share-variant-outline" />
               </button>
               <button class="icon-btn" aria-label="Eliminar lista" @click="openDeleteListConfirm(list)">
