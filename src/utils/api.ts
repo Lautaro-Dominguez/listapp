@@ -251,6 +251,13 @@ export async function deletePantry(id: number) {
   })
 }
 
+export async function sharePantry(id: number, email: string) {
+  return apiRequest(`${API_ENDPOINTS.PANTRIES}/${id}/share`, {
+    method: 'POST',
+    body: JSON.stringify({ email })
+  })
+}
+
 // Pantry Items API
 export async function getPantryItems(pantryId: number, params: Record<string, any> = {}) {
   const url = new URL(buildApiUrl(`${API_ENDPOINTS.PANTRY_ITEMS}/${pantryId}/items`))

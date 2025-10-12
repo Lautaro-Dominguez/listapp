@@ -34,6 +34,9 @@
               <button class="icon-btn" aria-label="Editar" @click="editPantry(pantry)">
                 <v-icon size="22" icon="mdi-pencil-outline" />
               </button>
+              <button class="icon-btn" aria-label="Compartir" @click="openSharePantry(pantry)">
+                <v-icon size="22" icon="mdi-share-variant-outline" />
+              </button>
               <button class="icon-btn" aria-label="Eliminar despensa" @click="deletePantryHandler(pantry)">
                 <v-icon size="22" icon="mdi-trash-can-outline" />
               </button>
@@ -132,6 +135,28 @@
           </div>
         </div>
       </div>
+      <div v-if="showSharePantry">
+        <div class="modal-bg" @click="cancelSharePantry">
+          <div class="modal" @click.stop>
+            <h3>Compartir Despensa</h3>
+            <label>Email del usuario:
+              <input
+                v-model="shareEmail"
+                type="email"
+                placeholder="usuario@ejemplo.com"
+                @keyup.enter="confirmSharePantry"
+                autofocus
+              />
+            </label>
+            <div v-if="shareError" class="error-message">{{ shareError }}</div>
+            <div v-if="shareSuccess" class="success-message">{{ shareSuccess }}</div>
+            <div class="modal-actions">
+              <button @click="confirmSharePantry">Compartir</button>
+              <button @click="cancelSharePantry">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </BaseLayout>
 </template>
@@ -143,7 +168,7 @@ import ItemQtyActions from '@/components/ItemQtyActions.vue'
 import NewProductForm from '@/components/NewProductForm.vue'
 import NewCategoryForm from '@/components/NewCategoryForm.vue'
 import { ref, onMounted } from 'vue'
-import { getPantries, createPantry, updatePantry, deletePantry, getPantryItems, createPantryItem, updatePantryItem, deletePantryItem } from '@/utils/api'
+import { getPantries, createPantry, updatePantry, deletePantry, getPantryItems, createPantryItem, updatePantryItem, deletePantryItem, sharePantry } from '@/utils/api'
 
 type Item = { id: number; label: string; emoji?: string }
 type ItemQty = Item & { qty: number; productId?: number }
@@ -160,11 +185,16 @@ const sharedPantries = ref<Pantry[]>([])
 const showAddPantry = ref(false)
 const showAddItem = ref(false)
 const showEditPantry = ref(false)
+const showSharePantry = ref(false)
 const editingPantry = ref<Pantry | null>(null)
+const sharingPantry = ref<Pantry | null>(null)
 const editPantryName = ref('')
 const addItemTargetId = ref<number | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const shareEmail = ref('')
+const shareError = ref<string | null>(null)
+const shareSuccess = ref<string | null>(null)
 
 async function fetchPantriesAndItems() {
   loading.value = true
@@ -417,6 +447,40 @@ async function deletePantryHandler(pantry: Pantry) {
     console.error('Error al eliminar despensa:', e)
   }
 }
+
+function openSharePantry(pantry: Pantry) {
+  sharingPantry.value = pantry
+  shareEmail.value = ''
+  shareError.value = null
+  shareSuccess.value = null
+  showSharePantry.value = true
+}
+
+async function confirmSharePantry() {
+  if (!shareEmail.value) {
+    shareError.value = 'Ingresa un email para compartir la despensa'
+    return
+  }
+
+  if (!sharingPantry.value) return
+
+  try {
+    await sharePantry(sharingPantry.value.id, shareEmail.value)
+
+    shareSuccess.value = 'Despensa compartida con éxito'
+    shareError.value = null
+  } catch (e: any) {
+    shareError.value = e.message || 'Error al compartir despensa'
+  }
+}
+
+function cancelSharePantry() {
+  showSharePantry.value = false
+  sharingPantry.value = null
+  shareEmail.value = ''
+  shareError.value = null
+  shareSuccess.value = null
+}
 </script>
 
 <style scoped>
@@ -554,5 +618,13 @@ async function deletePantryHandler(pantry: Pantry) {
   background: #ffebee;
   border-radius: 4px;
   border-left: 3px solid #e74c3c;
+}
+.success-message {
+  color: #2ecc71;
+  font-size: 14px;
+  padding: 8px 12px;
+  background: #e8f5e9;
+  border-radius: 4px;
+  border-left: 3px solid #2ecc71;
 }
 </style>
