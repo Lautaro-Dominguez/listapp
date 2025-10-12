@@ -132,24 +132,17 @@
           </div>
         </div>
       </div>
-      <div v-if="showDeletePantryConfirm">
-        <div class="modal-bg" @click="cancelDeletePantry">
-          <div class="modal modal-delete" @click.stop>
-            <div class="modal-icon-warning">⚠️</div>
-            <h3>Eliminar Despensa</h3>
-            <p class="modal-message">
-              ¿Estás seguro de que deseas eliminar la despensa "<strong>{{ deletingPantry?.title }}</strong>"?
-            </p>
-            <p class="modal-submessage">
-              Esta acción no se puede deshacer y se eliminarán todos los productos asociados.
-            </p>
-            <div class="modal-actions">
-              <button @click="confirmDeletePantry" class="btn-delete">Eliminar</button>
-              <button @click="cancelDeletePantry" class="btn-cancel">Cancelar</button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ConfirmDeleteModal
+        v-if="showDeletePantryConfirm"
+        title="Eliminar Despensa"
+        :submessage="'Esta acción no se puede deshacer y se eliminarán todos los productos asociados.'"
+        @confirm="confirmDeletePantry"
+        @cancel="cancelDeletePantry"
+      >
+        <template #message>
+          ¿Estás seguro de que deseas eliminar la despensa "<strong>{{ deletingPantry?.title }}</strong>"?
+        </template>
+      </ConfirmDeleteModal>
       <div v-if="showSharePantry">
         <div class="modal-bg" @click="cancelSharePantry">
           <div class="modal modal-share" @click.stop>
@@ -229,6 +222,7 @@ import SelectProductForm from '@/components/SelectProductForm.vue'
 import SearchBar from '@/components/SearchBar.vue'
 import { ref, onMounted, computed } from 'vue'
 import { getPantries, createPantry, updatePantry, deletePantry, getPantryItems, createPantryItem, updatePantryItem, deletePantryItem, sharePantry, getSharedUsers, revokeSharePantry } from '@/utils/api'
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue'
 
 type Item = { id: number; label: string; emoji?: string }
 type ItemQty = Item & { qty: number; productId?: number; unit: string }

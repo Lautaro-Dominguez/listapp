@@ -36,7 +36,7 @@
               <button class="icon-btn" aria-label="Editar" @click="startEdit()">
                 <v-icon size="22" icon="mdi-pencil-outline" />
               </button>
-              <button class="icon-btn" aria-label="Eliminar categoría" @click="deleteCategoryHandler(cat)">
+              <button class="icon-btn" aria-label="Eliminar categoría" @click="openDeleteCategoryConfirm(cat)">
                 <v-icon size="22" icon="mdi-trash-can-outline" />
               </button>
               <button class="icon-btn" :aria-label="collapsed ? 'Expandir' : 'Contraer'" @click="toggle()">
@@ -69,6 +69,17 @@
             @cancel="cancelEditProduct"
           />
         </div>
+        <ConfirmDeleteModal
+          v-if="showDeleteCategoryConfirm"
+          title="Eliminar Categoría"
+          :submessage="'Esta acción no se puede deshacer.'"
+          @confirm="confirmDeleteCategory"
+          @cancel="cancelDeleteCategory"
+        >
+          <template #message>
+            ¿Estás seguro de que deseas eliminar la categoría "<strong>{{ deletingCategory?.title }}</strong>"?
+          </template>
+        </ConfirmDeleteModal>
       </section>
     </div>
   </BaseLayout>
@@ -83,6 +94,7 @@ import CollapsibleList from '@/components/lists/CollapsibleList.vue'
 import NewProductForm from '@/components/NewProductForm.vue'
 import NewCategoryForm from '@/components/NewCategoryForm.vue'
 import SearchBar from '@/components/SearchBar.vue'
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue'
 import { ref, onMounted, computed } from 'vue'
 import { getProducts, createProduct, updateProduct, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory } from '@/utils/api'
 
@@ -97,6 +109,8 @@ const editProductTarget = ref<{ catId: number, item: Item } | null>(null)
 const showEditProduct = ref(false)
 const loading = ref(false)
 const error = ref<string | null>(null)
+const showDeleteCategoryConfirm = ref(false)
+const deletingCategory = ref<Category | null>(null)
 
 // búsqueda
 const searchQuery = ref('')
@@ -240,21 +254,27 @@ async function updateCategoryTitle(cat: Category, newTitle: string) {
   }
 }
 
-async function deleteCategoryHandler(cat: Category) {
-  const confirmed = window.confirm(`¿Eliminar la categoría "${cat.title}"?`)
-  if (!confirmed) return
+function openDeleteCategoryConfirm(cat: Category) {
+  deletingCategory.value = cat
+  showDeleteCategoryConfirm.value = true
+}
+async function confirmDeleteCategory() {
+  if (!deletingCategory.value) return
   try {
-    await deleteCategory(cat.id)
-    categories.value = categories.value.filter(c => c.id !== cat.id)
+    await deleteCategory(deletingCategory.value.id)
+    categories.value = categories.value.filter(c => c.id !== deletingCategory.value!.id)
 
-    if (addProductTarget.value === cat.id) {
+    if (addProductTarget.value === deletingCategory.value.id) {
       addProductTarget.value = null
       showAddProduct.value = false
     }
-    if (editProductTarget.value && editProductTarget.value.catId === cat.id) {
+    if (editProductTarget.value && editProductTarget.value.catId === deletingCategory.value.id) {
       editProductTarget.value = null
       showEditProduct.value = false
     }
+
+    showDeleteCategoryConfirm.value = false
+    deletingCategory.value = null
   } catch (e: any) {
     if ((e as any).status === 409) {
       error.value = 'No se puede eliminar la categoría porque tiene productos asociados'
@@ -264,6 +284,10 @@ async function deleteCategoryHandler(cat: Category) {
       error.value = (e as any).message || 'Error al eliminar categoría'
     }
   }
+}
+function cancelDeleteCategory() {
+  showDeleteCategoryConfirm.value = false
+  deletingCategory.value = null
 }
 </script>
 
