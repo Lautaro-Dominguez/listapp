@@ -10,7 +10,10 @@
           <v-icon size="22" icon="mdi-plus" color="black" style="margin-right:8px" />
           Nueva categoría
         </button>
-        <div v-if="categories.length === 0" class="empty-products">
+        <div v-if="loading" class="empty-products">
+          Cargando...
+        </div>
+        <div v-else-if="categories.length === 0" class="empty-products">
           No hay productos
         </div>
         <div v-else-if="visibleCategories.length === 0 && searchQuery" class="empty-products">
@@ -69,6 +72,7 @@
             @cancel="cancelEditProduct"
           />
         </div>
+        <!-- Reusable delete modal for Category -->
         <ConfirmDeleteModal
           v-if="showDeleteCategoryConfirm"
           title="Eliminar Categoría"
