@@ -112,7 +112,7 @@
         />
       </div>
       <div v-if="showAddItem">
-        <NewProductForm
+          <SelectProductForm
           @add="confirmAddItemForm"
           @cancel="cancelAddItem"
         />
@@ -202,8 +202,8 @@
 import BaseLayout from '@/layouts/BaseLayout.vue'
 import CollapsibleList from '@/components/lists/CollapsibleList.vue'
 import ItemQtyActions from '@/components/ItemQtyActions.vue'
-import NewProductForm from '@/components/NewProductForm.vue'
 import NewCategoryForm from '@/components/NewCategoryForm.vue'
+import SelectProductForm from '@/components/SelectProductForm.vue'
 import { ref, onMounted } from 'vue'
 import { getPantries, createPantry, updatePantry, deletePantry, getPantryItems, createPantryItem, updatePantryItem, deletePantryItem, sharePantry, getSharedUsers, revokeSharePantry } from '@/utils/api'
 
@@ -257,18 +257,29 @@ async function fetchPantriesAndItems() {
     const sharedResponse = await getPantries({ page: 1, per_page: 100, order: 'ASC', sort_by: 'createdAt', owner: false })
     const sharedPantriesData = sharedResponse.data || []
 
-    // Fetch items for own pantries
+    // Fetch items for own pantries using the GET /api/pantries/{id}/items endpoint
     const ownPantriesWithItems = await Promise.all(
       ownPantriesData.map(async (p: any) => {
         try {
-          const itemsResponse = await getPantryItems(p.id, { page: 1, per_page: 100 })
+          const itemsResponse = await getPantryItems(p.id, {
+            page: 1,
+            per_page: 100,
+            order: 'ASC',
+            sort_by: 'createdAt'
+          })
+
+          // Process the response according to the API specification
           const items = (itemsResponse.data || []).map((item: any) => ({
             id: item.id,
             label: item.product?.name || 'Producto',
             emoji: item.product?.metadata?.emoji || '📦',
             qty: item.quantity || 1,
-            productId: item.product?.id
+            productId: item.product?.id,
+            unit: item.unit,
+            categoryId: item.product?.category?.id,
+            categoryName: item.product?.category?.name
           }))
+
           return {
             id: p.id,
             title: p.name,
@@ -276,8 +287,20 @@ async function fetchPantriesAndItems() {
             items,
             collapsed: false
           }
-        } catch (e) {
-          console.error(`Error al cargar items de pantry ${p.id}:`, e)
+        } catch (e: any) {
+          // Handle different error codes from API
+          if (e.status === 400) {
+            console.error(`Error 400: Datos inválidos al cargar items de pantry ${p.id}`)
+          } else if (e.status === 401) {
+            console.error(`Error 401: No autorizado para cargar items de pantry ${p.id}`)
+          } else if (e.status === 404) {
+            console.error(`Error 404: Pantry ${p.id} no encontrada`)
+          } else if (e.status === 500) {
+            console.error(`Error 500: Error del servidor al cargar items de pantry ${p.id}`)
+          } else {
+            console.error(`Error al cargar items de pantry ${p.id}:`, e)
+          }
+
           return {
             id: p.id,
             title: p.name,
@@ -289,18 +312,29 @@ async function fetchPantriesAndItems() {
       })
     )
 
-    // Fetch items for shared pantries
+    // Fetch items for shared pantries using the GET /api/pantries/{id}/items endpoint
     const sharedPantriesWithItems = await Promise.all(
       sharedPantriesData.map(async (p: any) => {
         try {
-          const itemsResponse = await getPantryItems(p.id, { page: 1, per_page: 100 })
+          const itemsResponse = await getPantryItems(p.id, {
+            page: 1,
+            per_page: 100,
+            order: 'ASC',
+            sort_by: 'createdAt'
+          })
+
+          // Process the response according to the API specification
           const items = (itemsResponse.data || []).map((item: any) => ({
             id: item.id,
             label: item.product?.name || 'Producto',
             emoji: item.product?.metadata?.emoji || '📦',
             qty: item.quantity || 1,
-            productId: item.product?.id
+            productId: item.product?.id,
+            unit: item.unit,
+            categoryId: item.product?.category?.id,
+            categoryName: item.product?.category?.name
           }))
+
           return {
             id: p.id,
             title: p.name,
@@ -308,8 +342,20 @@ async function fetchPantriesAndItems() {
             items,
             collapsed: false
           }
-        } catch (e) {
-          console.error(`Error al cargar items de pantry ${p.id}:`, e)
+        } catch (e: any) {
+          // Handle different error codes from API
+          if (e.status === 400) {
+            console.error(`Error 400: Datos inválidos al cargar items de pantry ${p.id}`)
+          } else if (e.status === 401) {
+            console.error(`Error 401: No autorizado para cargar items de pantry ${p.id}`)
+          } else if (e.status === 404) {
+            console.error(`Error 404: Pantry ${p.id} no encontrada`)
+          } else if (e.status === 500) {
+            console.error(`Error 500: Error del servidor al cargar items de pantry ${p.id}`)
+          } else {
+            console.error(`Error al cargar items de pantry ${p.id}:`, e)
+          }
+
           return {
             id: p.id,
             title: p.name,
@@ -324,7 +370,14 @@ async function fetchPantriesAndItems() {
     ownPantries.value = ownPantriesWithItems
     sharedPantries.value = sharedPantriesWithItems
   } catch (e: any) {
-    error.value = e.message || 'Error al cargar despensas'
+    // Handle errors when fetching pantries list
+    if (e.status === 401) {
+      error.value = 'No estás autorizado. Por favor, inicia sesión.'
+    } else if (e.status === 500) {
+      error.value = 'Error del servidor al cargar despensas.'
+    } else {
+      error.value = e.message || 'Error al cargar despensas'
+    }
     console.error('Error al cargar despensas:', e)
   } finally {
     loading.value = false
@@ -359,8 +412,8 @@ function openAddItem(pantryId: number) {
   showAddItem.value = true
 }
 
-async function confirmAddItemForm({ name, emoji }: { name: string; emoji: string }) {
-  if (addItemTargetId.value === null || !name) return
+async function confirmAddItemForm({ productId, quantity }: { productId: number; quantity: number }) {
+  if (addItemTargetId.value === null || !productId) return
 
   // Find pantry in either own or shared list
   let pantry = ownPantries.value.find(p => p.id === addItemTargetId.value)
@@ -370,25 +423,53 @@ async function confirmAddItemForm({ name, emoji }: { name: string; emoji: string
   if (!pantry) return
 
   try {
-    // Create item in pantry
-    const created = await createPantryItem(pantry.id, {
-      product: { name },
-      quantity: 1,
-      metadata: emoji ? { emoji } : {}
-    })
+    // Check if item already exists in pantry
+    const existingItem = pantry.items.find(i => i.productId === productId)
+    if (existingItem) {
+      // If exists, just increase the quantity
+      const newQty = existingItem.qty + quantity
+      const updated = await updatePantryItem(pantry.id, existingItem.id, { quantity: newQty })
+      existingItem.qty = updated.quantity || newQty
+    } else {
+      // If not exists, create new item in pantry
+      const created = await createPantryItem(pantry.id, {
+        product: { id: productId },
+        quantity: quantity,
+        metadata: {}
+      })
 
-    const createdEmoji = created.product?.metadata?.emoji || emoji || '📦'
-    pantry.items.push({
-      id: created.id,
-      label: created.product?.name || name,
-      emoji: createdEmoji,
-      qty: created.quantity || 1,
-      productId: created.product?.id
-    })
+      // Extract data from the API response according to specification
+      const createdEmoji = created.product?.metadata?.emoji || '📦'
+      pantry.items.push({
+        id: created.id,
+        label: created.product?.name || 'Producto',
+        emoji: createdEmoji,
+        qty: created.quantity || quantity,
+        productId: created.product?.id
+      })
+    }
+
+    error.value = null
   } catch (e: any) {
-    error.value = e.message || 'Error al crear producto'
+    // Handle different error codes from API
+    if (e.status === 400) {
+      error.value = 'Datos inválidos. Verifica la información del producto.'
+    } else if (e.status === 401) {
+      error.value = 'No tienes autorización para agregar productos a esta despensa.'
+    } else if (e.status === 404) {
+      error.value = 'Producto o despensa no encontrada.'
+    } else if (e.status === 409) {
+      error.value = 'El producto ya existe en la despensa o hay un conflicto.'
+    } else if (e.status === 500) {
+      error.value = 'Error del servidor. Intenta nuevamente.'
+    } else {
+      error.value = e.message || 'Error al agregar producto a la despensa'
+    }
+    console.error('Error al agregar producto:', e)
+    return // Don't close modal if there's an error
   }
 
+  // Cerrar el modal después de agregar exitosamente
   showAddItem.value = false
   addItemTargetId.value = null
 }
