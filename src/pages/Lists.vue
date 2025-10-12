@@ -18,7 +18,7 @@
           No hay listas.
         </div>
         <div v-else class="grid">
-          <CollapsibleList
+                      <CollapsibleList
             v-for="list in displayedOwnLists"
             :key="list.id"
             :title="list.title"
@@ -31,18 +31,21 @@
             @update:title="updateListTitle(list, $event)"
             :showHeader="true"
           >
-            <template #header-actions>
-              <button class="icon-btn" @click="openShareList(list)" title="Compartir lista">
-                <span class="emoji">👥</span>
+             <template #header-actions="{ toggle, collapsed, startEdit }">
+              <button class="icon-btn" aria-label="Agregar" @click="openAddItem(pantry.id)">
+                <v-icon size="22" icon="mdi-plus" />
               </button>
-              <button class="icon-btn" @click="purchaseList(list)" title="Marcar como comprada">
-                <span class="emoji">✅</span>
+              <button class="icon-btn" aria-label="Editar" @click="startEdit()">
+                <v-icon size="22" icon="mdi-pencil-outline" />
               </button>
-              <button class="icon-btn" @click="resetList(list)" title="Reiniciar lista">
-                <span class="emoji">🔄</span>
+              <button class="icon-btn" aria-label="Compartir" @click="openSharePantry(pantry)">
+                <v-icon size="22" icon="mdi-share-variant-outline" />
               </button>
-              <button class="icon-btn" @click="moveItemsToPantry(list)" title="Mover a despensa">
-                <span class="emoji">🏠</span>
+              <button class="icon-btn" aria-label="Eliminar despensa" @click="openDeletePantryConfirm(pantry)">
+                <v-icon size="22" icon="mdi-trash-can-outline" />
+              </button>
+              <button class="icon-btn" :aria-label="collapsed ? 'Expandir' : 'Contraer'" @click="toggle">
+                <v-icon size="22" :icon="collapsed ? 'mdi-chevron-down' : 'mdi-chevron-up'" />
               </button>
             </template>
             <template #item="{ item }">
@@ -66,7 +69,7 @@
           No tienes listas compartidas
         </div>
         <div v-else class="grid">
-          <CollapsibleList
+                      <CollapsibleList
             v-for="list in displayedSharedLists"
             :key="list.id"
             :title="list.title"
@@ -77,11 +80,8 @@
             :showHeader="true"
           >
             <template #header-actions>
-              <button class="icon-btn" @click="purchaseList(list)" title="Marcar como comprada">
-                <span class="emoji">✅</span>
-              </button>
-              <button class="icon-btn" @click="resetList(list)" title="Reiniciar lista">
-                <span class="emoji">🔄</span>
+              <button class="icon-btn" @click="openAddItem(list.id)" title="Agregar producto">
+                <span class="action-icon">+</span>
               </button>
             </template>
             <template #item="{ item }">
@@ -555,8 +555,8 @@ async function moveItemsToPantry(list: List) {
   box-shadow: 0 4px 16px rgba(0,0,0,0.28);
 }
 .icon-btn {
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: none;
   background: #9bd166;
@@ -565,13 +565,25 @@ async function moveItemsToPantry(list: List) {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: filter 0.2s;
+  transition: all 0.2s;
+  margin: 0 2px;
 }
 .icon-btn:hover {
   filter: brightness(0.95);
+  transform: scale(1.05);
 }
 .icon-btn:active {
   filter: brightness(0.9);
+  transform: scale(0.95);
+}
+.action-icon {
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 .modal-bg {
   position: fixed;
