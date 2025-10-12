@@ -1,5 +1,5 @@
 // API Base URL Configuration
-export const API_BASE_URL = 'http://localhost:8080'
+export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 
 // API Endpoints
 export const API_ENDPOINTS = {
@@ -20,34 +20,100 @@ export const API_ENDPOINTS = {
 
 // Helper function to build full API URLs
 export const buildApiUrl = (endpoint: string): string => {
+  // If endpoint is already absolute, return as-is
+  if (/^https?:\/\//i.test(endpoint)) return endpoint
+  // If API_BASE_URL is empty, assume same-origin
+  if (!API_BASE_URL) return endpoint
   return `${API_BASE_URL}${endpoint}`
+}
+
+async function parseJsonSafe(res: Response): Promise<any> {
+  // No Content
+  if (res.status === 204) return null
+  const ctype = (res.headers.get('content-type') || '').toLowerCase()
+  // Try to parse as JSON when content-type indicates JSON
+  if (ctype.includes('application/json')) {
+    try { return await res.json() } catch { /* fallthrough to text */ }
+  }
+  // Fallback: read as text and try to parse JSON heuristically
+  try {
+    const text = await res.text()
+    const trimmed = text.trim()
+    if (!trimmed) return null
+    if ((trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))) {
+      try { return JSON.parse(trimmed) } catch { /* return raw text below */ }
+    }
+    return text
+  } catch {
+    return null
+  }
+}
+
+function toErrorObject(err: any, status?: number) {
+  if (err && typeof err === 'object') {
+    return { ...err, status: status ?? (err.status ?? 500) }
+  }
+  return { message: typeof err === 'string' ? err : 'API error', status: status ?? 500 }
+}
+
+function normalizeArrayResponse<T = any>(payload: any): T[] {
+  if (!payload) return []
+  if (Array.isArray(payload)) return payload as T[]
+  if (Array.isArray(payload.data)) return payload.data as T[]
+  return []
+}
+
+function normalizePaginatedResponse<T = any>(payload: any): { data: T[]; meta?: any } {
+  if (!payload) return { data: [] }
+  if (Array.isArray(payload)) return { data: payload }
+  if (Array.isArray(payload.data)) {
+    return { data: payload.data, meta: payload.meta ?? payload.pagination }
+  }
+  return { data: [] }
+}
+
+// Simple per-key serial execution queue to avoid backend concurrency issues (e.g., SQLite savepoints)
+const __serialQueues: Record<string, Promise<any>> = {}
+function enqueueSerial<T>(key: string, task: () => Promise<T>): Promise<T> {
+  const last = __serialQueues[key] || Promise.resolve()
+  const next = last.catch(() => undefined).then(task)
+  // Ensure chain continues regardless of outcome
+  __serialQueues[key] = next.then(
+    () => undefined,
+    () => undefined
+  )
+  return next
 }
 
 export async function apiRequest<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = localStorage.getItem('auth-token')
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+  const method = (options.method || 'GET').toUpperCase()
+  const isBodyMethod = method !== 'GET' && method !== 'HEAD'
+  const defaultHeaders: Record<string, string> = {
+    Accept: 'application/json',
+    ...(isBodyMethod ? { 'Content-Type': 'application/json' } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
   }
 
   const res = await fetch(buildApiUrl(endpoint), {
     ...options,
-    headers: { ...headers, ...(options.headers || {}) }
+    headers: { ...defaultHeaders, ...(options.headers as any || {}) }
   })
 
+  const payload = await parseJsonSafe(res)
+
   if (!res.ok) {
-    const errorData = await res.json().catch(() => ({ message: 'API error' }))
-    errorData.status = res.status
-    throw errorData
+    throw toErrorObject(payload ?? { message: 'API error' }, res.status)
   }
 
-  return res.json()
+  return payload as T
 }
 
 export async function getProducts(params: Record<string, any> = {}) {
   const url = new URL(buildApiUrl(API_ENDPOINTS.PRODUCTS))
-  Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, v))
-  return apiRequest(url.pathname + url.search, { method: 'GET' })
+  Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, String(v)))
+  const result = await apiRequest(url.pathname + url.search, { method: 'GET' })
+  return normalizeArrayResponse(result)
 }
 
 export async function createProduct(data: any) {
@@ -72,7 +138,8 @@ export async function deleteProduct(id: number) {
 export async function getCategories(params: Record<string, any> = {}) {
   const url = new URL(buildApiUrl(API_ENDPOINTS.CATEGORIES))
   Object.entries(params).forEach(([k, v]) => url.searchParams.append(k, String(v)))
-  return apiRequest(url.pathname + url.search, { method: 'GET' })
+  const result = await apiRequest(url.pathname + url.search, { method: 'GET' })
+  return normalizeArrayResponse(result)
 }
 
 export async function createCategory(data: any) {
@@ -154,7 +221,8 @@ export async function getPantries(params: Record<string, any> = {}) {
       url.searchParams.append(k, String(v))
     }
   })
-  return apiRequest(url.pathname + url.search, { method: 'GET' })
+  const result = await apiRequest(url.pathname + url.search, { method: 'GET' })
+  return normalizePaginatedResponse(result)
 }
 
 export async function createPantry(data: { name: string; metadata?: any }) {
@@ -191,7 +259,11 @@ export async function getPantryItems(pantryId: number, params: Record<string, an
       url.searchParams.append(k, String(v))
     }
   })
-  return apiRequest(url.pathname + url.search, { method: 'GET' })
+  // Run pantry items requests serially to mitigate backend SQLite transaction/savepoint issues
+  return enqueueSerial('pantry-items', async () => {
+    const result = await apiRequest(url.pathname + url.search, { method: 'GET' })
+    return normalizePaginatedResponse(result)
+  })
 }
 
 export async function createPantryItem(pantryId: number, data: any) {
