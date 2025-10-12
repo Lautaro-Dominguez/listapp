@@ -368,6 +368,17 @@ export async function getShoppingListById(id: number) {
   })
 }
 
+export async function getShoppingListItems(listId: number, params: Record<string, any> = {}) {
+  const url = new URL(buildApiUrl(`${API_ENDPOINTS.SHOPPING_LISTS}/${listId}/items`))
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null) {
+      url.searchParams.append(k, String(v))
+    }
+  })
+  const result = await apiRequest(url.pathname + url.search, { method: 'GET' })
+  return normalizePaginatedResponse(result)
+}
+
 export async function createShoppingList(data: Omit<ShoppingList, 'id' | 'owner' | 'sharedWith' | 'lastPurchasedAt' | 'createdAt' | 'updatedAt'>) {
   return apiRequest<ShoppingList>(API_ENDPOINTS.SHOPPING_LISTS, {
     method: 'POST',
@@ -437,9 +448,12 @@ export async function createListItem(listId: number, data: {
   unit: string
   metadata?: Record<string, any>
 }) {
-  return apiRequest(`${API_ENDPOINTS.SHOPPING_LISTS}/${listId}/items`, {
-    method: 'POST',
-    body: JSON.stringify(data)
+  return enqueueSerial(`list-write-${listId}`, async () => {
+    const result = await apiRequest(`${API_ENDPOINTS.SHOPPING_LISTS}/${listId}/items`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+    return result
   })
 }
 
@@ -447,14 +461,19 @@ export async function updateListItem(listId: number, itemId: number, data: {
   quantity: number
   unit: string
 }) {
-  return apiRequest(`${API_ENDPOINTS.SHOPPING_LISTS}/${listId}/items/${itemId}`, {
-    method: 'PATCH',
-    body: JSON.stringify(data)
+  return enqueueSerial(`list-write-${listId}`, async () => {
+    const result = await apiRequest(`${API_ENDPOINTS.SHOPPING_LISTS}/${listId}/items/${itemId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    })
+    return result
   })
 }
 
 export async function deleteListItem(listId: number, itemId: number) {
-  return apiRequest(`${API_ENDPOINTS.SHOPPING_LISTS}/${listId}/items/${itemId}`, {
-    method: 'DELETE'
+  return enqueueSerial(`list-write-${listId}`, async () => {
+    return apiRequest(`${API_ENDPOINTS.SHOPPING_LISTS}/${listId}/items/${itemId}`, {
+      method: 'DELETE'
+    })
   })
 }

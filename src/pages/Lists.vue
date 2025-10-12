@@ -18,43 +18,124 @@
           No hay listas.
         </div>
         <div v-else class="grid">
-                      <CollapsibleList
+          <CollapsibleList
             v-for="list in displayedOwnLists"
             :key="list.id"
             :title="list.title"
             :items="filteredItems(list)"
-            :collapsed="list.collapsed"
-            @update:collapsed="list.collapsed = $event"
-            @add-item="openAddItem(list.id)"
-            @delete="openDeleteListConfirm(list)"
-            @edit="editList(list)"
-            @update:title="updateListTitle(list, $event)"
-            :showHeader="true"
+            v-model:collapsed="list.collapsed"
+            @add="() => openAddItem(list.id)"
+            @remove="(item) => removeItem(list, item as any)"
+            @edit="() => editList(list)"
+            @update:title="(newTitle) => updateListTitle(list, newTitle)"
+            item-key-field="id"
           >
              <template #header-actions="{ toggle, collapsed, startEdit }">
               <button class="icon-btn" aria-label="Agregar" @click="openAddItem(list.id)">
                 <v-icon size="22" icon="mdi-plus" />
               </button>
+              <button 
+                class="icon-btn" 
+                :aria-label="list.recurring ? 'Marcar como no recurrente' : 'Marcar como recurrente'"
+                @click="toggleRecurring(list)"
+                :class="{ 'recurring-active': list.recurring }"
+              >
+                <v-icon 
+                  size="22" 
+                  :icon="list.recurring ? 'mdi-star' : 'mdi-star-outline'"
+                  :color="list.recurring ? 'amber' : 'black'"
+                />
+              </button>
               <button class="icon-btn" aria-label="Editar" @click="startEdit()">
                 <v-icon size="22" icon="mdi-pencil-outline" />
               </button>
-              <button class="icon-btn" aria-label="Compartir" @click="openSharePantry(list)">
+              <button class="icon-btn" aria-label="Compartir" @click="openShareList(list)">
                 <v-icon size="22" icon="mdi-share-variant-outline" />
               </button>
-              <button class="icon-btn" aria-label="Eliminar despensa" @click="openDeletePantryConfirm(list)">
+              <button class="icon-btn" aria-label="Eliminar lista" @click="openDeleteListConfirm(list)">
                 <v-icon size="22" icon="mdi-trash-can-outline" />
               </button>
               <button class="icon-btn" :aria-label="collapsed ? 'Expandir' : 'Contraer'" @click="toggle">
                 <v-icon size="22" :icon="collapsed ? 'mdi-chevron-down' : 'mdi-chevron-up'" />
               </button>
             </template>
-            <template #item="{ item }">
+            <template #item-left="{ item }">
+              <span class="emoji">{{ item.emoji || '📦' }}</span>
+            </template>
+            <template #item-right="{ item }">
               <ItemQtyActions
-                :item="item"
-                @inc="incQty(list, item)"
-                @dec="decQty(list, item)"
+                :item="item as ItemQty"
+                :onInc="() => incQty(list, item as any)"
+                :onDec="() => decQty(list, item as any)"
               />
             </template>
+            <template #empty>{{ hasQuery ? 'Sin coincidencias' : 'No hay productos' }}</template>
+          </CollapsibleList>
+        </div>
+      </section>
+
+      <!-- Listas Recurrentes -->
+      <section class="section">
+        <h2 class="section-title">Listas Recurrentes</h2>
+        <div v-if="loading" class="empty-lists">
+          Cargando listas recurrentes...
+        </div>
+        <div v-else-if="displayedRecurringLists.length === 0" class="empty-lists">
+          No hay listas recurrentes.
+        </div>
+        <div v-else class="grid">
+          <CollapsibleList
+            v-for="list in displayedRecurringLists"
+            :key="list.id"
+            :title="list.title"
+            :items="filteredItems(list)"
+            v-model:collapsed="list.collapsed"
+            @add="() => openAddItem(list.id)"
+            @remove="(item) => removeItem(list, item as any)"
+            @edit="() => editList(list)"
+            @update:title="(newTitle) => updateListTitle(list, newTitle)"
+            item-key-field="id"
+          >
+             <template #header-actions="{ toggle, collapsed, startEdit }">
+              <button class="icon-btn" aria-label="Agregar" @click="openAddItem(list.id)">
+                <v-icon size="22" icon="mdi-plus" />
+              </button>
+              <button 
+                class="icon-btn" 
+                :aria-label="list.recurring ? 'Marcar como no recurrente' : 'Marcar como recurrente'"
+                @click="toggleRecurring(list)"
+                :class="{ 'recurring-active': list.recurring }"
+              >
+                <v-icon 
+                  size="22" 
+                  :icon="list.recurring ? 'mdi-star' : 'mdi-star-outline'"
+                  :color="list.recurring ? 'amber' : 'black'"
+                />
+              </button>
+              <button class="icon-btn" aria-label="Editar" @click="startEdit()">
+                <v-icon size="22" icon="mdi-pencil-outline" />
+              </button>
+              <button class="icon-btn" aria-label="Compartir" @click="openShareList(list)">
+                <v-icon size="22" icon="mdi-share-variant-outline" />
+              </button>
+              <button class="icon-btn" aria-label="Eliminar lista" @click="openDeleteListConfirm(list)">
+                <v-icon size="22" icon="mdi-trash-can-outline" />
+              </button>
+              <button class="icon-btn" :aria-label="collapsed ? 'Expandir' : 'Contraer'" @click="toggle">
+                <v-icon size="22" :icon="collapsed ? 'mdi-chevron-down' : 'mdi-chevron-up'" />
+              </button>
+            </template>
+            <template #item-left="{ item }">
+              <span class="emoji">{{ item.emoji || '📦' }}</span>
+            </template>
+            <template #item-right="{ item }">
+              <ItemQtyActions
+                :item="item as ItemQty"
+                :onInc="() => incQty(list, item as any)"
+                :onDec="() => decQty(list, item as any)"
+              />
+            </template>
+            <template #empty>{{ hasQuery ? 'Sin coincidencias' : 'No hay productos' }}</template>
           </CollapsibleList>
         </div>
       </section>
@@ -66,31 +147,35 @@
           Cargando listas compartidas...
         </div>
         <div v-else-if="displayedSharedLists.length === 0" class="empty-lists">
-          No tienes listas compartidas
+          No hay listas compartidas.
         </div>
         <div v-else class="grid">
-                      <CollapsibleList
+          <CollapsibleList
             v-for="list in displayedSharedLists"
             :key="list.id"
             :title="list.title"
             :items="filteredItems(list)"
-            :collapsed="list.collapsed"
-            @update:collapsed="list.collapsed = $event"
-            @add-item="openAddItem(list.id)"
-            :showHeader="true"
+            v-model:collapsed="list.collapsed"
+            @remove="(item) => removeItem(list, item as any)"
+            @update:title="(newTitle) => updateListTitle(list, newTitle)"
+            item-key-field="id"
           >
-            <template #header-actions>
-              <button class="icon-btn" @click="openAddItem(list.id)" title="Agregar producto">
-                <span class="action-icon">+</span>
+            <template #header-actions="{ toggle, collapsed }">
+              <button class="icon-btn" :aria-label="collapsed ? 'Expandir' : 'Contraer'" @click="toggle">
+                <v-icon size="22" :icon="collapsed ? 'mdi-chevron-down' : 'mdi-chevron-up'" />
               </button>
             </template>
-            <template #item="{ item }">
+            <template #item-left="{ item }">
+              <span class="emoji">{{ item.emoji || '📦' }}</span>
+            </template>
+            <template #item-right="{ item }">
               <ItemQtyActions
-                :item="item"
-                @inc="incQty(list, item)"
-                @dec="decQty(list, item)"
+                :item="item as ItemQty"
+                :onInc="() => incQty(list, item as any)"
+                :onDec="() => decQty(list, item as any)"
               />
             </template>
+            <template #empty>{{ hasQuery ? 'Sin coincidencias' : 'No hay productos' }}</template>
           </CollapsibleList>
         </div>
       </section>
@@ -101,26 +186,21 @@
         @cancel="cancelAddList"
       />
       <div v-if="showAddItem">
-        <div class="modal-bg" @click.self="cancelAddItem">
-          <div class="modal">
-            <h3>Agregar Producto</h3>
-            <SelectProductForm
-              @submit="confirmAddItemForm"
-              @cancel="cancelAddItem"
-            />
-          </div>
-        </div>
+        <SelectProductForm
+          @add="confirmAddItemForm"
+          @addMultiple="confirmAddItems"
+          @cancel="cancelAddItem"
+        />
       </div>
       <ConfirmDeleteModal
         v-if="showDeleteListConfirm"
-        :title="`Eliminar Lista '${deletingList?.title}'`"
-        :message="`¿Estás seguro que deseas eliminar la lista '${deletingList?.title}'?`"
-        :submessage="'Esta acción no se puede deshacer.'"
+        title="Eliminar Lista"
+        :submessage="'Esta acción no se puede deshacer y se eliminarán todos los productos asociados.'"
         @confirm="confirmDeleteList"
         @cancel="cancelDeleteList"
       >
-        <template #icon>
-          <span class="modal-icon-warning">⚠️</span>
+        <template #message>
+          ¿Estás seguro de que deseas eliminar la lista "<strong>{{ deletingList?.title }}</strong>"?
         </template>
       </ConfirmDeleteModal>
       <div v-if="showShareList">
@@ -190,12 +270,13 @@ import ItemQtyActions from '@/components/ItemQtyActions.vue'
 import NewListForm from '@/components/NewListForm.vue'
 import SelectProductForm from '@/components/SelectProductForm.vue'
 import SearchBar from '@/components/SearchBar.vue'
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { 
   getShoppingLists, 
   createShoppingList, 
   updateShoppingList, 
   deleteShoppingList, 
+  getShoppingListItems,
   createListItem,
   updateListItem,
   deleteListItem,
@@ -205,6 +286,7 @@ import {
   shareShoppingList,
   getSharedUsersForList,
   revokeListAccess,
+  getProducts,
   type ShoppingList as ApiShoppingList
 } from '@/utils/api'
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue'
@@ -245,6 +327,8 @@ const sharedUsersList = ref<SharedUser[]>([])
 const loadingSharedUsers = ref(false)
 const sharingInProgress = ref(false)
 
+// Global products lookup para evitar múltiples llamadas a la API
+const productsLookup = ref(new Map())
 
 const addItemTargetId = ref<number | null>(null)
 
@@ -272,8 +356,14 @@ function filteredItems(list: List) {
 
 const displayedOwnLists = computed(() => {
   const q = normalizedQuery()
-  if (!q) return ownLists.value
-  return ownLists.value.filter(listMatches)
+  const filteredLists = q ? ownLists.value.filter(listMatches) : ownLists.value
+  return filteredLists.filter(list => !list.recurring)
+})
+
+const displayedRecurringLists = computed(() => {
+  const q = normalizedQuery()
+  const filteredLists = q ? ownLists.value.filter(listMatches) : ownLists.value
+  return filteredLists.filter(list => list.recurring)
 })
 
 const displayedSharedLists = computed(() => {
@@ -282,28 +372,123 @@ const displayedSharedLists = computed(() => {
   return sharedLists.value.filter(listMatches)
 })
 
-function mapApiListToView(apiList: ApiShoppingList): List {
-  return {
-    id: apiList.id!,
-    title: apiList.name,
-    description: apiList.description || '',
-    recurring: apiList.recurring,
-    items: [], 
-    collapsed: false
-  }
-}
-
 async function fetchLists() {
   loading.value = true
   error.value = null
   try {
+    // Cargar productos una sola vez para usar como lookup
+    const allProducts = await getProducts({ page: 1, per_page: 1000 })
+    productsLookup.value.clear()
+    allProducts.forEach((product: any) => {
+      productsLookup.value.set(product.id, product)
+    })
+
     // Fetch own lists
     const ownListsData = await getShoppingLists({ owner: true })
-    ownLists.value = ownListsData.map(mapApiListToView)
-
+    
     // Fetch shared lists
     const sharedListsData = await getShoppingLists({ owner: false })
-    sharedLists.value = sharedListsData.map(mapApiListToView)
+
+    // Cargar items para listas propias
+    const ownListsWithItems = await Promise.all(
+      ownListsData.map(async (list: any) => {
+        try {
+          const itemsResponse = await getShoppingListItems(list.id, {
+            page: 1,
+            per_page: 100,
+            order: 'ASC',
+            sort_by: 'createdAt'
+          })
+
+          const items = (itemsResponse.data || []).map((item: any) => {
+            // Buscar datos del producto en el lookup
+            const productData = productsLookup.value.get(item.productId) || item.product
+            
+            return {
+              id: item.id,
+              label: productData?.name || item.productName || `Producto ${item.id}`,
+              emoji: productData?.metadata?.emoji || item.emoji || '📦',
+              qty: item.quantity || 1,
+              productId: productData?.id || item.productId,
+              unit: item.unit || 'unidades',
+              categoryId: productData?.category?.id || item.categoryId,
+              categoryName: productData?.category?.name || item.categoryName
+            }
+          })
+
+          return {
+            id: list.id,
+            title: list.name,
+            description: list.description || '',
+            recurring: list.recurring,
+            items,
+            collapsed: false
+          }
+        } catch (e: any) {
+          console.error(`Error al cargar items de lista ${list.id}:`, e)
+          return {
+            id: list.id,
+            title: list.name,
+            description: list.description || '',
+            recurring: list.recurring,
+            items: [],
+            collapsed: false
+          }
+        }
+      })
+    )
+
+    // Cargar items para listas compartidas
+    const sharedListsWithItems = await Promise.all(
+      sharedListsData.map(async (list: any) => {
+        try {
+          const itemsResponse = await getShoppingListItems(list.id, {
+            page: 1,
+            per_page: 100,
+            order: 'ASC',
+            sort_by: 'createdAt'
+          })
+
+          const items = (itemsResponse.data || []).map((item: any) => {
+            // Buscar datos del producto en el lookup
+            const productData = productsLookup.value.get(item.productId) || item.product
+            
+            return {
+              id: item.id,
+              label: productData?.name || item.productName || `Producto ${item.id}`,
+              emoji: productData?.metadata?.emoji || item.emoji || '📦',
+              qty: item.quantity || 1,
+              productId: productData?.id || item.productId,
+              unit: item.unit || 'unidades',
+              categoryId: productData?.category?.id || item.categoryId,
+              categoryName: productData?.category?.name || item.categoryName
+            }
+          })
+
+          return {
+            id: list.id,
+            title: list.name,
+            description: list.description || '',
+            recurring: list.recurring,
+            items,
+            collapsed: false
+          }
+        } catch (e: any) {
+          console.error(`Error al cargar items de lista ${list.id}:`, e)
+          return {
+            id: list.id,
+            title: list.name,
+            description: list.description || '',
+            recurring: list.recurring,
+            items: [],
+            collapsed: false
+          }
+        }
+      })
+    )
+
+    ownLists.value = ownListsWithItems
+    sharedLists.value = sharedListsWithItems
   } catch (e: any) {
     if (e.status === 401) {
       error.value = 'No estás autorizado. Por favor, inicia sesión.'
@@ -324,7 +509,14 @@ async function confirmAddListForm(formData: { name: string; description: string;
   if (!formData.name) return
   try {
     const created = await createShoppingList(formData)
-    ownLists.value.push(mapApiListToView(created))
+    ownLists.value.push({
+      id: created.id!,
+      title: created.name,
+      description: created.description || '',
+      recurring: created.recurring,
+      items: [],
+      collapsed: false
+    })
   } catch (e: any) {
     error.value = e.message || 'Error al crear lista'
   }
@@ -357,7 +549,7 @@ async function confirmAddItemForm({ productId, quantity }: { productId: number; 
         quantity: newQty,
         unit: existingItem.unit || 'unidades'
       })
-      existingItem.qty = updated.quantity || newQty
+      existingItem.qty = updated.quantity !== undefined ? updated.quantity : newQty
     } else {
       const created = await createListItem(list.id, {
         product: { id: productId },
@@ -366,14 +558,19 @@ async function confirmAddItemForm({ productId, quantity }: { productId: number; 
         metadata: {}
       })
 
-      const createdEmoji = created.product?.metadata?.emoji || '📦'
+      // La API retorna {item: {...}} en lugar de directamente el item
+      const itemData = created.item || created
+      
+      // Buscar datos del producto en el lookup
+      const productData = productsLookup.value.get(productId)
+      
       list.items.push({
-        id: created.id,
-        label: created.product?.name || 'Producto',
-        emoji: createdEmoji,
-        qty: created.quantity || quantity,
-        productId: created.product?.id,
-        unit: created.unit || 'unidades'
+        id: itemData.id,
+        label: productData?.name || itemData.product?.name || itemData.productName || `Producto ${itemData.id}`,
+        emoji: productData?.metadata?.emoji || itemData.product?.metadata?.emoji || '📦',
+        qty: itemData.quantity || quantity,
+        productId: productData?.id || itemData.product?.id || itemData.productId || productId,
+        unit: itemData.unit || 'unidades'
       })
     }
 
@@ -401,9 +598,71 @@ async function confirmAddItemForm({ productId, quantity }: { productId: number; 
   addItemTargetId.value = null
 }
 
+// Agrega un producto a la lista actualmente seleccionada
+async function addSingleToList(listId: number, productId: number, quantity: number) {
+  let list = ownLists.value.find(l => l.id === listId)
+  if (!list) {
+    list = sharedLists.value.find(l => l.id === listId)
+  }
+  if (!list) throw new Error('Lista no encontrada')
+
+  const existing = list.items.find(i => i.productId === productId)
+  if (existing) {
+    const newQty = existing.qty + quantity
+    const updated = await updateListItem(list.id, existing.id, { quantity: newQty, unit: existing.unit || 'unidades' })
+    existing.qty = updated.quantity !== undefined ? updated.quantity : newQty
+    return existing
+  } else {
+    const created = await createListItem(list.id, { product: { id: productId }, quantity, unit: 'unidades', metadata: {} })
+    
+    // La API retorna {item: {...}} en lugar de directamente el item
+    const itemData = created.item || created
+    
+    // Buscar datos del producto en el lookup
+    const productData = productsLookup.value.get(productId)
+    
+    const newItem = {
+      id: itemData.id,
+      label: productData?.name || itemData.product?.name || itemData.productName || `Producto ${itemData.id}`,
+      emoji: productData?.metadata?.emoji || itemData.product?.metadata?.emoji || '📦',
+      qty: itemData.quantity || quantity,
+      productId: productData?.id || itemData.product?.id || itemData.productId || productId,
+      unit: itemData.unit || 'unidades'
+    }
+    list.items.push(newItem)
+    return newItem
+  }
+}
+
+// Procesa varios productos emitidos desde el modal en serie para evitar errores de concurrencia
+async function confirmAddItems(payload: { items: { productId: number; quantity: number }[] }) {
+  if (addItemTargetId.value === null) return
+  const listId = addItemTargetId.value
+  try {
+    for (const it of payload.items) {
+      await addSingleToList(listId, it.productId, it.quantity)
+    }
+    error.value = null
+  } catch (e: any) {
+    error.value = e?.message || 'Error al agregar productos a la lista'
+  } finally {
+    showAddItem.value = false
+    addItemTargetId.value = null
+  }
+}
+
 function cancelAddItem() {
   showAddItem.value = false
   addItemTargetId.value = null
+}
+
+async function removeItem(list: List, item: ItemQty) {
+  try {
+    await deleteListItem(list.id, item.id)
+    list.items = list.items.filter(i => i.id !== item.id)
+  } catch (e: any) {
+    error.value = e.message || 'Error al eliminar producto'
+  }
 }
 
 function editList(_list: List) {
@@ -431,7 +690,8 @@ async function incQty(list: List, item: Item) {
       quantity: newQty,
       unit: itemQty.unit || 'unidades'
     })
-    itemQty.qty = updated.quantity || newQty
+    itemQty.qty = updated.quantity !== undefined ? updated.quantity : newQty
+    await nextTick() // Force Vue reactivity update
   } catch (e: any) {
     error.value = e.message || 'Error al actualizar cantidad'
   }
@@ -442,19 +702,15 @@ async function decQty(list: List, item: Item) {
   const newQty = Math.max(0, itemQty.qty - 1)
 
   if (newQty === 0) {
-    try {
-      await deleteListItem(list.id, itemQty.id)
-      list.items = list.items.filter(i => i.id !== itemQty.id)
-    } catch (e: any) {
-      error.value = e.message || 'Error al eliminar producto'
-    }
+    await removeItem(list, itemQty)
   } else {
     try {
       const updated = await updateListItem(list.id, itemQty.id, {
         quantity: newQty,
         unit: itemQty.unit || 'unidades'
       })
-      itemQty.qty = updated.quantity || newQty
+      itemQty.qty = updated.quantity !== undefined ? updated.quantity : newQty
+      await nextTick() // Force Vue reactivity update
     } catch (e: any) {
       error.value = e.message || 'Error al actualizar cantidad'
     }
@@ -483,6 +739,19 @@ async function confirmDeleteList() {
 function cancelDeleteList() {
   showDeleteListConfirm.value = false
   deletingList.value = null
+}
+
+async function toggleRecurring(list: List) {
+  const newRecurringValue = !list.recurring
+  
+  try {
+    await updateShoppingList(list.id, { recurring: newRecurringValue })
+    // Actualizar el estado local
+    list.recurring = newRecurringValue
+  } catch (e: any) {
+    error.value = e.message || 'Error al actualizar lista'
+    console.error('Error al actualizar estado recurrente:', e)
+  }
 }
 
 async function openShareList(list: List) {
@@ -648,8 +917,8 @@ async function moveItemsToPantry(list: List) {
   box-shadow: 0 4px 16px rgba(0,0,0,0.28);
 }
 .icon-btn {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: none;
   background: #9bd166;
@@ -658,25 +927,13 @@ async function moveItemsToPantry(list: List) {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s;
-  margin: 0 2px;
+  transition: filter 0.2s;
 }
 .icon-btn:hover {
   filter: brightness(0.95);
-  transform: scale(1.05);
 }
 .icon-btn:active {
   filter: brightness(0.9);
-  transform: scale(0.95);
-}
-.action-icon {
-  font-size: 18px;
-  line-height: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
 }
 .modal-bg {
   position: fixed;
@@ -876,6 +1133,11 @@ async function moveItemsToPantry(list: List) {
   border-top: 2px solid #fff;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
+}
+
+.recurring-active {
+  background-color: rgba(255, 193, 7, 0.1);
+  border-radius: 4px;
 }
 
 @keyframes spin {
