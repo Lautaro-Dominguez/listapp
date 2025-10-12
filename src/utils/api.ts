@@ -321,6 +321,16 @@ export interface ShoppingList {
   description?: string
   recurring: boolean
   metadata?: Record<string, any>
+  items?: Array<{
+    id: number
+    product?: {
+      id: number
+      name: string
+      metadata?: Record<string, any>
+    }
+    quantity: number
+    unit: string
+  }>
   owner?: {
     id: number
     name: string
@@ -417,6 +427,34 @@ export async function getSharedUsersForList(id: number) {
 
 export async function revokeListAccess(listId: number, userId: number) {
   return apiRequest(`${API_ENDPOINTS.SHOPPING_LISTS}/${listId}/share/${userId}`, {
+    method: 'DELETE'
+  })
+}
+
+export async function createListItem(listId: number, data: {
+  product: { id: number }
+  quantity: number
+  unit: string
+  metadata?: Record<string, any>
+}) {
+  return apiRequest(`${API_ENDPOINTS.SHOPPING_LISTS}/${listId}/items`, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  })
+}
+
+export async function updateListItem(listId: number, itemId: number, data: {
+  quantity: number
+  unit: string
+}) {
+  return apiRequest(`${API_ENDPOINTS.SHOPPING_LISTS}/${listId}/items/${itemId}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data)
+  })
+}
+
+export async function deleteListItem(listId: number, itemId: number) {
+  return apiRequest(`${API_ENDPOINTS.SHOPPING_LISTS}/${listId}/items/${itemId}`, {
     method: 'DELETE'
   })
 }

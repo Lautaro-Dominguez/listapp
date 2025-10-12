@@ -32,16 +32,16 @@
             :showHeader="true"
           >
              <template #header-actions="{ toggle, collapsed, startEdit }">
-              <button class="icon-btn" aria-label="Agregar" @click="openAddItem(pantry.id)">
+              <button class="icon-btn" aria-label="Agregar" @click="openAddItem(list.id)">
                 <v-icon size="22" icon="mdi-plus" />
               </button>
               <button class="icon-btn" aria-label="Editar" @click="startEdit()">
                 <v-icon size="22" icon="mdi-pencil-outline" />
               </button>
-              <button class="icon-btn" aria-label="Compartir" @click="openSharePantry(pantry)">
+              <button class="icon-btn" aria-label="Compartir" @click="openSharePantry(list)">
                 <v-icon size="22" icon="mdi-share-variant-outline" />
               </button>
-              <button class="icon-btn" aria-label="Eliminar despensa" @click="openDeletePantryConfirm(pantry)">
+              <button class="icon-btn" aria-label="Eliminar despensa" @click="openDeletePantryConfirm(list)">
                 <v-icon size="22" icon="mdi-trash-can-outline" />
               </button>
               <button class="icon-btn" :aria-label="collapsed ? 'Expandir' : 'Contraer'" @click="toggle">
@@ -196,6 +196,9 @@ import {
   createShoppingList, 
   updateShoppingList, 
   deleteShoppingList, 
+  createListItem,
+  updateListItem,
+  deleteListItem,
   markListAsPurchased,
   resetShoppingList,
   moveListItemsToPantry,
@@ -232,7 +235,7 @@ const showShareList = ref(false)
 const showDeleteListConfirm = ref(false)
 const sharingList = ref<List | null>(null)
 const deletingList = ref<List | null>(null)
-const addItemTargetId = ref<number | null>(null)
+
 const loading = ref(false)
 const error = ref<string | null>(null)
 const shareEmail = ref('')
@@ -241,6 +244,9 @@ const shareSuccess = ref<string | null>(null)
 const sharedUsersList = ref<SharedUser[]>([])
 const loadingSharedUsers = ref(false)
 const sharingInProgress = ref(false)
+
+
+const addItemTargetId = ref<number | null>(null)
 
 // Search state
 const query = ref('')
@@ -282,7 +288,7 @@ function mapApiListToView(apiList: ApiShoppingList): List {
     title: apiList.name,
     description: apiList.description || '',
     recurring: apiList.recurring,
-    items: [], // You'll need to implement the items API
+    items: [], 
     collapsed: false
   }
 }
@@ -335,7 +341,64 @@ function openAddItem(listId: number) {
 }
 
 async function confirmAddItemForm({ productId, quantity }: { productId: number; quantity: number }) {
-  // Implement when you have the list items API
+  if (addItemTargetId.value === null || !productId) return
+
+  let list = ownLists.value.find(l => l.id === addItemTargetId.value)
+  if (!list) {
+    list = sharedLists.value.find(l => l.id === addItemTargetId.value)
+  }
+  if (!list) return
+
+  try {
+    const existingItem = list.items.find(i => i.productId === productId)
+    if (existingItem) {
+      const newQty = existingItem.qty + quantity
+      const updated = await updateListItem(list.id, existingItem.id, {
+        quantity: newQty,
+        unit: existingItem.unit || 'unidades'
+      })
+      existingItem.qty = updated.quantity || newQty
+    } else {
+      const created = await createListItem(list.id, {
+        product: { id: productId },
+        quantity: quantity,
+        unit: 'unidades',
+        metadata: {}
+      })
+
+      const createdEmoji = created.product?.metadata?.emoji || '📦'
+      list.items.push({
+        id: created.id,
+        label: created.product?.name || 'Producto',
+        emoji: createdEmoji,
+        qty: created.quantity || quantity,
+        productId: created.product?.id,
+        unit: created.unit || 'unidades'
+      })
+    }
+
+    error.value = null
+  } catch (e: any) {
+    if (e.status === 400) {
+      error.value = 'Datos inválidos. Verifica la información del producto.'
+      console.error('Error 400 details:', e)
+    } else if (e.status === 401) {
+      error.value = 'No tienes autorización para agregar productos a esta lista.'
+    } else if (e.status === 404) {
+      error.value = 'Producto o lista no encontrada.'
+    } else if (e.status === 409) {
+      error.value = 'El producto ya existe en la lista o hay un conflicto.'
+    } else if (e.status === 500) {
+      error.value = 'Error del servidor. Intenta nuevamente.'
+    } else {
+      error.value = e.message || 'Error al agregar producto a la lista'
+    }
+    console.error('Error al agregar producto:', e)
+    return
+  }
+
+  showAddItem.value = false
+  addItemTargetId.value = null
 }
 
 function cancelAddItem() {
@@ -361,11 +424,41 @@ async function updateListTitle(list: List, newTitle: string) {
 }
 
 async function incQty(list: List, item: Item) {
-  // Implement when you have the list items API
+  const itemQty = item as ItemQty
+  const newQty = itemQty.qty + 1
+  try {
+    const updated = await updateListItem(list.id, itemQty.id, {
+      quantity: newQty,
+      unit: itemQty.unit || 'unidades'
+    })
+    itemQty.qty = updated.quantity || newQty
+  } catch (e: any) {
+    error.value = e.message || 'Error al actualizar cantidad'
+  }
 }
 
 async function decQty(list: List, item: Item) {
-  // Implement when you have the list items API
+  const itemQty = item as ItemQty
+  const newQty = Math.max(0, itemQty.qty - 1)
+
+  if (newQty === 0) {
+    try {
+      await deleteListItem(list.id, itemQty.id)
+      list.items = list.items.filter(i => i.id !== itemQty.id)
+    } catch (e: any) {
+      error.value = e.message || 'Error al eliminar producto'
+    }
+  } else {
+    try {
+      const updated = await updateListItem(list.id, itemQty.id, {
+        quantity: newQty,
+        unit: itemQty.unit || 'unidades'
+      })
+      itemQty.qty = updated.quantity || newQty
+    } catch (e: any) {
+      error.value = e.message || 'Error al actualizar cantidad'
+    }
+  }
 }
 
 function openDeleteListConfirm(list: List) {

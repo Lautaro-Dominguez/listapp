@@ -4,11 +4,11 @@
       <h3>Nueva lista</h3>
       <label>
         Nombre:
-        <input v-model="localName" placeholder="Nombre de la lista" />
-      </label>
-      <label>
-        Descripción:
-        <input v-model="localDescription" placeholder="Descripción de la lista" />
+        <input 
+          v-model="localName" 
+          placeholder="Nombre de la lista"
+          @keyup.enter="onAdd"
+        />
       </label>
       <div class="modal-actions">
         <button @click="onAdd">Agregar</button>
@@ -22,27 +22,23 @@
 import { ref, watch, defineProps, defineEmits } from 'vue'
 
 const props = defineProps({
-  name: { type: String, default: '' },
-  description: { type: String, default: '' }
+  name: { type: String, default: '' }
 })
 const emit = defineEmits(['submit', 'cancel'])
 
 const localName = ref(props.name)
-const localDescription = ref(props.description)
 
 watch(() => props.name, (val) => { localName.value = val })
-watch(() => props.description, (val) => { localDescription.value = val })
 
 function onAdd() {
   if (!localName.value.trim()) return
   emit('submit', { 
     name: localName.value.trim(),
-    description: localDescription.value.trim(),
+    description: '', // Siempre enviamos una descripción vacía
     recurring: false,
     metadata: {}
   })
   localName.value = ''
-  localDescription.value = ''
 }
 </script>
 
