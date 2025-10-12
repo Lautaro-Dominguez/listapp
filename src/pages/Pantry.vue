@@ -37,7 +37,7 @@
               <button class="icon-btn" aria-label="Compartir" @click="openSharePantry(pantry)">
                 <v-icon size="22" icon="mdi-share-variant-outline" />
               </button>
-              <button class="icon-btn" aria-label="Eliminar despensa" @click="deletePantryHandler(pantry)">
+              <button class="icon-btn" aria-label="Eliminar despensa" @click="openDeletePantryConfirm(pantry)">
                 <v-icon size="22" icon="mdi-trash-can-outline" />
               </button>
               <button class="icon-btn" :aria-label="collapsed ? 'Expandir' : 'Contraer'" @click="toggle">
@@ -52,7 +52,6 @@
                 :item="item as ItemQty"
                 :onInc="() => incQty(pantry, item as any)"
                 :onDec="() => decQty(pantry, item as any)"
-                :onRemove="() => removeItem(pantry, item as any)"
               />
             </template>
             <template #empty>No hay productos</template>
@@ -76,15 +75,11 @@
             :title="pantry.title"
             :items="pantry.items"
             v-model:collapsed="pantry.collapsed"
-            @add="() => openAddItem(pantry.id)"
             @remove="(item) => removeItem(pantry, item as any)"
             @update:title="(newTitle) => updatePantryTitle(pantry, newTitle)"
             item-key-field="id"
           >
             <template #header-actions="{ toggle, collapsed }">
-              <button class="icon-btn" aria-label="Agregar" @click="openAddItem(pantry.id)">
-                <v-icon size="22" icon="mdi-plus" />
-              </button>
               <button class="icon-btn" :aria-label="collapsed ? 'Expandir' : 'Contraer'" @click="toggle">
                 <v-icon size="22" :icon="collapsed ? 'mdi-chevron-down' : 'mdi-chevron-up'" />
               </button>
@@ -97,7 +92,6 @@
                 :item="item as ItemQty"
                 :onInc="() => incQty(pantry, item as any)"
                 :onDec="() => decQty(pantry, item as any)"
-                :onRemove="() => removeItem(pantry, item as any)"
               />
             </template>
             <template #empty>No hay productos</template>
@@ -135,12 +129,29 @@
           </div>
         </div>
       </div>
+      <div v-if="showDeletePantryConfirm">
+        <div class="modal-bg" @click="cancelDeletePantry">
+          <div class="modal modal-delete" @click.stop>
+            <div class="modal-icon-warning">⚠️</div>
+            <h3>Eliminar Despensa</h3>
+            <p class="modal-message">
+              ¿Estás seguro de que deseas eliminar la despensa "<strong>{{ deletingPantry?.title }}</strong>"?
+            </p>
+            <p class="modal-submessage">
+              Esta acción no se puede deshacer y se eliminarán todos los productos asociados.
+            </p>
+            <div class="modal-actions">
+              <button @click="confirmDeletePantry" class="btn-delete">Eliminar</button>
+              <button @click="cancelDeletePantry" class="btn-cancel">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      </div>
       <div v-if="showSharePantry">
         <div class="modal-bg" @click="cancelSharePantry">
           <div class="modal modal-share" @click.stop>
             <h3>Compartir Despensa</h3>
 
-            <!-- Formulario para compartir -->
             <div class="share-form">
               <label>Email del usuario:
                 <input
@@ -148,17 +159,25 @@
                   type="email"
                   placeholder="usuario@ejemplo.com"
                   @keyup.enter="confirmSharePantry"
+                  :disabled="sharingInProgress"
                   autofocus
                 />
               </label>
+
+              <div v-if="sharingInProgress" class="sharing-progress">
+                <div class="spinner"></div>
+                <span>Compartiendo despensa...</span>
+              </div>
+
               <div v-if="shareError" class="error-message">{{ shareError }}</div>
               <div v-if="shareSuccess" class="success-message">{{ shareSuccess }}</div>
               <div class="modal-actions">
-                <button @click="confirmSharePantry">Compartir</button>
+                <button @click="confirmSharePantry" :disabled="sharingInProgress">
+                  {{ sharingInProgress ? 'Compartiendo...' : 'Compartir' }}
+                </button>
               </div>
             </div>
 
-            <!-- Lista de usuarios compartidos -->
             <div class="shared-users-section">
               <h4>Compartido con:</h4>
               <div v-if="loadingSharedUsers" class="loading-users">
@@ -233,8 +252,10 @@ const showAddPantry = ref(false)
 const showAddItem = ref(false)
 const showEditPantry = ref(false)
 const showSharePantry = ref(false)
+const showDeletePantryConfirm = ref(false)
 const editingPantry = ref<Pantry | null>(null)
 const sharingPantry = ref<Pantry | null>(null)
+const deletingPantry = ref<Pantry | null>(null)
 const editPantryName = ref('')
 const addItemTargetId = ref<number | null>(null)
 const loading = ref(false)
@@ -244,20 +265,18 @@ const shareError = ref<string | null>(null)
 const shareSuccess = ref<string | null>(null)
 const sharedUsersList = ref<SharedUser[]>([])
 const loadingSharedUsers = ref(false)
+const sharingInProgress = ref(false)
 
 async function fetchPantriesAndItems() {
   loading.value = true
   error.value = null
   try {
-    // Fetch own pantries (owner=true)
     const ownResponse = await getPantries({ page: 1, per_page: 100, order: 'ASC', sort_by: 'createdAt', owner: true })
     const ownPantriesData = ownResponse.data || []
 
-    // Fetch shared pantries (owner=false)
     const sharedResponse = await getPantries({ page: 1, per_page: 100, order: 'ASC', sort_by: 'createdAt', owner: false })
     const sharedPantriesData = sharedResponse.data || []
 
-    // Fetch items for own pantries using the GET /api/pantries/{id}/items endpoint
     const ownPantriesWithItems = await Promise.all(
       ownPantriesData.map(async (p: any) => {
         try {
@@ -268,7 +287,6 @@ async function fetchPantriesAndItems() {
             sort_by: 'createdAt'
           })
 
-          // Process the response according to the API specification
           const items = (itemsResponse.data || []).map((item: any) => ({
             id: item.id,
             label: item.product?.name || 'Producto',
@@ -288,7 +306,6 @@ async function fetchPantriesAndItems() {
             collapsed: false
           }
         } catch (e: any) {
-          // Handle different error codes from API
           if (e.status === 400) {
             console.error(`Error 400: Datos inválidos al cargar items de pantry ${p.id}`)
           } else if (e.status === 401) {
@@ -312,7 +329,6 @@ async function fetchPantriesAndItems() {
       })
     )
 
-    // Fetch items for shared pantries using the GET /api/pantries/{id}/items endpoint
     const sharedPantriesWithItems = await Promise.all(
       sharedPantriesData.map(async (p: any) => {
         try {
@@ -323,7 +339,6 @@ async function fetchPantriesAndItems() {
             sort_by: 'createdAt'
           })
 
-          // Process the response according to the API specification
           const items = (itemsResponse.data || []).map((item: any) => ({
             id: item.id,
             label: item.product?.name || 'Producto',
@@ -343,7 +358,6 @@ async function fetchPantriesAndItems() {
             collapsed: false
           }
         } catch (e: any) {
-          // Handle different error codes from API
           if (e.status === 400) {
             console.error(`Error 400: Datos inválidos al cargar items de pantry ${p.id}`)
           } else if (e.status === 401) {
@@ -370,7 +384,6 @@ async function fetchPantriesAndItems() {
     ownPantries.value = ownPantriesWithItems
     sharedPantries.value = sharedPantriesWithItems
   } catch (e: any) {
-    // Handle errors when fetching pantries list
     if (e.status === 401) {
       error.value = 'No estás autorizado. Por favor, inicia sesión.'
     } else if (e.status === 500) {
@@ -415,7 +428,6 @@ function openAddItem(pantryId: number) {
 async function confirmAddItemForm({ productId, quantity }: { productId: number; quantity: number }) {
   if (addItemTargetId.value === null || !productId) return
 
-  // Find pantry in either own or shared list
   let pantry = ownPantries.value.find(p => p.id === addItemTargetId.value)
   if (!pantry) {
     pantry = sharedPantries.value.find(p => p.id === addItemTargetId.value)
@@ -423,10 +435,8 @@ async function confirmAddItemForm({ productId, quantity }: { productId: number; 
   if (!pantry) return
 
   try {
-    // Check if item already exists in pantry
     const existingItem = pantry.items.find(i => i.productId === productId)
     if (existingItem) {
-      // If exists, just increase the quantity
       const newQty = existingItem.qty + quantity
       const updated = await updatePantryItem(pantry.id, existingItem.id, {
         quantity: newQty,
@@ -434,15 +444,13 @@ async function confirmAddItemForm({ productId, quantity }: { productId: number; 
       })
       existingItem.qty = updated.quantity || newQty
     } else {
-      // If not exists, create new item in pantry
       const created = await createPantryItem(pantry.id, {
         product: { id: productId },
         quantity: quantity,
-        unit: 'unidades', // Campo obligatorio - unidad por defecto
+        unit: 'unidades',
         metadata: {}
       })
 
-      // Extract data from the API response according to specification
       const createdEmoji = created.product?.metadata?.emoji || '📦'
       pantry.items.push({
         id: created.id,
@@ -456,7 +464,6 @@ async function confirmAddItemForm({ productId, quantity }: { productId: number; 
 
     error.value = null
   } catch (e: any) {
-    // Handle different error codes from API
     if (e.status === 400) {
       error.value = 'Datos inválidos. Verifica la información del producto.'
       console.error('Error 400 details:', e)
@@ -472,10 +479,9 @@ async function confirmAddItemForm({ productId, quantity }: { productId: number; 
       error.value = e.message || 'Error al agregar producto a la despensa'
     }
     console.error('Error al agregar producto:', e)
-    return // Don't close modal if there's an error
+    return
   }
 
-  // Cerrar el modal después de agregar exitosamente
   showAddItem.value = false
   addItemTargetId.value = null
 }
@@ -576,18 +582,28 @@ async function decQty(pantry: Pantry, item: Item) {
   }
 }
 
-async function deletePantryHandler(pantry: Pantry) {
-  if (!confirm(`¿Estás seguro de eliminar la despensa "${pantry.title}"?`)) {
-    return
-  }
+function openDeletePantryConfirm(pantry: Pantry) {
+  deletingPantry.value = pantry
+  showDeletePantryConfirm.value = true
+}
+
+async function confirmDeletePantry() {
+  if (!deletingPantry.value) return
 
   try {
-    await deletePantry(pantry.id)
-    ownPantries.value = ownPantries.value.filter(p => p.id !== pantry.id)
+    await deletePantry(deletingPantry.value.id)
+    ownPantries.value = ownPantries.value.filter(p => p.id !== deletingPantry.value!.id)
+    showDeletePantryConfirm.value = false
+    deletingPantry.value = null
   } catch (e: any) {
     error.value = e.message || 'Error al eliminar despensa'
     console.error('Error al eliminar despensa:', e)
   }
+}
+
+function cancelDeletePantry() {
+  showDeletePantryConfirm.value = false
+  deletingPantry.value = null
 }
 
 async function openSharePantry(pantry: Pantry) {
@@ -597,7 +613,6 @@ async function openSharePantry(pantry: Pantry) {
   shareSuccess.value = null
   showSharePantry.value = true
 
-  // Cargar lista de usuarios con quienes se ha compartido
   await loadSharedUsers(pantry.id)
 }
 
@@ -622,6 +637,10 @@ async function confirmSharePantry() {
 
   if (!sharingPantry.value) return
 
+  sharingInProgress.value = true
+  shareError.value = null
+  shareSuccess.value = null
+
   try {
     await sharePantry(sharingPantry.value.id, shareEmail.value)
 
@@ -629,7 +648,6 @@ async function confirmSharePantry() {
     shareError.value = null
     shareEmail.value = ''
 
-    // Recargar la lista de usuarios compartidos
     await loadSharedUsers(sharingPantry.value.id)
   } catch (e: any) {
     if (e.status === 404) {
@@ -639,6 +657,8 @@ async function confirmSharePantry() {
     } else {
       shareError.value = e.message || 'Error al compartir despensa'
     }
+  } finally {
+    sharingInProgress.value = false
   }
 }
 
@@ -657,7 +677,6 @@ async function revokeUserAccess(user: SharedUser) {
 
     await revokeSharePantry(sharingPantry.value.id, user.id)
 
-    // Actualizar lista de usuarios compartidos
     await loadSharedUsers(sharingPantry.value.id)
   } catch (e: any) {
     console.error('Error al revocar acceso:', e)
@@ -883,5 +902,64 @@ async function revokeUserAccess(user: SharedUser) {
 }
 .revoke-btn:hover {
   color: #c0392b;
+}
+.modal-delete {
+  text-align: center;
+  max-width: 450px;
+}
+.modal-icon-warning {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+.modal-message {
+  font-size: 16px;
+  color: #333;
+  margin: 12px 0;
+  line-height: 1.5;
+}
+.modal-message strong {
+  color: #000;
+  font-weight: 600;
+}
+.modal-submessage {
+  font-size: 14px;
+  color: #666;
+  margin: 8px 0 16px;
+  line-height: 1.4;
+}
+.btn-delete {
+  background: #e74c3c !important;
+  color: #fff !important;
+}
+.btn-delete:hover {
+  background: #c0392b !important;
+}
+.btn-cancel {
+  background: #eee !important;
+  color: #222 !important;
+}
+.btn-cancel:hover {
+  background: #ddd !important;
+}
+.sharing-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #333;
+  margin-top: 8px;
+}
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #9bd166;
+  border-top: 2px solid #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 </style>
