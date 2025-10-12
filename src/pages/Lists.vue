@@ -38,10 +38,10 @@
               <button class="icon-btn" aria-label="Editar" @click="startEdit()">
                 <v-icon size="22" icon="mdi-pencil-outline" />
               </button>
-              <button class="icon-btn" aria-label="Compartir" @click="openSharePantry(list)">
+              <button class="icon-btn" aria-label="Compartir" @click="openShareList(list)">
                 <v-icon size="22" icon="mdi-share-variant-outline" />
               </button>
-              <button class="icon-btn" aria-label="Eliminar despensa" @click="openDeletePantryConfirm(list)">
+              <button class="icon-btn" aria-label="Eliminar despensa" @click="openDeleteListConfirm(list)">
                 <v-icon size="22" icon="mdi-trash-can-outline" />
               </button>
               <button class="icon-btn" :aria-label="collapsed ? 'Expandir' : 'Contraer'" @click="toggle">
