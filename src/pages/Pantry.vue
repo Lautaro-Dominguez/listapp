@@ -6,7 +6,7 @@
       </div>
       <!-- Mis Despensas -->
       <section class="section">
-        <h2 class="section-title">Mis Despensas</h2>
+        <h2 class="section-title">Despensas</h2>
         <button class="fab-add-pantry" @click="showAddPantry = true">
           <v-icon size="22" icon="mdi-plus" color="black" style="margin-right:8px" />
           Nueva despensa

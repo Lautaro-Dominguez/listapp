@@ -2,7 +2,7 @@
   <BaseLayout>
     <div class="products-wrapper">
       <section class="section">
-        <h2 class="section-title">Mis Productos</h2>
+        <h2 class="section-title">Productos</h2>
         <div style="margin: 10px 6px 18px;">
           <SearchBar v-model="searchQuery" placeholder="Buscar productos" />
         </div>
