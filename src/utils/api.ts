@@ -258,6 +258,18 @@ export async function sharePantry(id: number, email: string) {
   })
 }
 
+export async function getSharedUsers(id: number) {
+  return apiRequest(`${API_ENDPOINTS.PANTRIES}/${id}/shared-users`, {
+    method: 'GET'
+  })
+}
+
+export async function revokeSharePantry(pantryId: number, userId: number) {
+  return apiRequest(`${API_ENDPOINTS.PANTRIES}/${pantryId}/share/${userId}`, {
+    method: 'DELETE'
+  })
+}
+
 // Pantry Items API
 export async function getPantryItems(pantryId: number, params: Record<string, any> = {}) {
   const url = new URL(buildApiUrl(`${API_ENDPOINTS.PANTRY_ITEMS}/${pantryId}/items`))

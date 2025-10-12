@@ -137,22 +137,59 @@
       </div>
       <div v-if="showSharePantry">
         <div class="modal-bg" @click="cancelSharePantry">
-          <div class="modal" @click.stop>
+          <div class="modal modal-share" @click.stop>
             <h3>Compartir Despensa</h3>
-            <label>Email del usuario:
-              <input
-                v-model="shareEmail"
-                type="email"
-                placeholder="usuario@ejemplo.com"
-                @keyup.enter="confirmSharePantry"
-                autofocus
-              />
-            </label>
-            <div v-if="shareError" class="error-message">{{ shareError }}</div>
-            <div v-if="shareSuccess" class="success-message">{{ shareSuccess }}</div>
+
+            <!-- Formulario para compartir -->
+            <div class="share-form">
+              <label>Email del usuario:
+                <input
+                  v-model="shareEmail"
+                  type="email"
+                  placeholder="usuario@ejemplo.com"
+                  @keyup.enter="confirmSharePantry"
+                  autofocus
+                />
+              </label>
+              <div v-if="shareError" class="error-message">{{ shareError }}</div>
+              <div v-if="shareSuccess" class="success-message">{{ shareSuccess }}</div>
+              <div class="modal-actions">
+                <button @click="confirmSharePantry">Compartir</button>
+              </div>
+            </div>
+
+            <!-- Lista de usuarios compartidos -->
+            <div class="shared-users-section">
+              <h4>Compartido con:</h4>
+              <div v-if="loadingSharedUsers" class="loading-users">
+                Cargando usuarios...
+              </div>
+              <div v-else-if="sharedUsersList.length === 0" class="empty-users">
+                Esta despensa no está compartida con nadie
+              </div>
+              <ul v-else class="shared-users-list">
+                <li v-for="user in sharedUsersList" :key="user.id" class="shared-user-item">
+                  <div class="user-info">
+                    <span class="user-icon">👤</span>
+                    <div class="user-details">
+                      <div class="user-name">{{ user.name }} {{ user.surname }}</div>
+                      <div class="user-email">{{ user.email }}</div>
+                    </div>
+                  </div>
+                  <button
+                    class="revoke-btn"
+                    @click="revokeUserAccess(user)"
+                    aria-label="Revocar acceso"
+                    title="Dejar de compartir"
+                  >
+                    <v-icon size="18" icon="mdi-close" />
+                  </button>
+                </li>
+              </ul>
+            </div>
+
             <div class="modal-actions">
-              <button @click="confirmSharePantry">Compartir</button>
-              <button @click="cancelSharePantry">Cancelar</button>
+              <button @click="cancelSharePantry">Cerrar</button>
             </div>
           </div>
         </div>
@@ -168,7 +205,7 @@ import ItemQtyActions from '@/components/ItemQtyActions.vue'
 import NewProductForm from '@/components/NewProductForm.vue'
 import NewCategoryForm from '@/components/NewCategoryForm.vue'
 import { ref, onMounted } from 'vue'
-import { getPantries, createPantry, updatePantry, deletePantry, getPantryItems, createPantryItem, updatePantryItem, deletePantryItem, sharePantry } from '@/utils/api'
+import { getPantries, createPantry, updatePantry, deletePantry, getPantryItems, createPantryItem, updatePantryItem, deletePantryItem, sharePantry, getSharedUsers, revokeSharePantry } from '@/utils/api'
 
 type Item = { id: number; label: string; emoji?: string }
 type ItemQty = Item & { qty: number; productId?: number }
@@ -178,6 +215,16 @@ type Pantry = {
   emoji: string
   items: ItemQty[]
   collapsed: boolean
+}
+
+type SharedUser = {
+  id: number
+  name: string
+  surname: string
+  email: string
+  metadata: any
+  createdAt: string
+  updatedAt: string
 }
 
 const ownPantries = ref<Pantry[]>([])
@@ -195,6 +242,8 @@ const error = ref<string | null>(null)
 const shareEmail = ref('')
 const shareError = ref<string | null>(null)
 const shareSuccess = ref<string | null>(null)
+const sharedUsersList = ref<SharedUser[]>([])
+const loadingSharedUsers = ref(false)
 
 async function fetchPantriesAndItems() {
   loading.value = true
@@ -448,12 +497,28 @@ async function deletePantryHandler(pantry: Pantry) {
   }
 }
 
-function openSharePantry(pantry: Pantry) {
+async function openSharePantry(pantry: Pantry) {
   sharingPantry.value = pantry
   shareEmail.value = ''
   shareError.value = null
   shareSuccess.value = null
   showSharePantry.value = true
+
+  // Cargar lista de usuarios con quienes se ha compartido
+  await loadSharedUsers(pantry.id)
+}
+
+async function loadSharedUsers(pantryId: number) {
+  loadingSharedUsers.value = true
+  try {
+    const users = await getSharedUsers(pantryId)
+    sharedUsersList.value = Array.isArray(users) ? users : []
+  } catch (e: any) {
+    console.error('Error al cargar usuarios compartidos:', e)
+    sharedUsersList.value = []
+  } finally {
+    loadingSharedUsers.value = false
+  }
 }
 
 async function confirmSharePantry() {
@@ -469,8 +534,18 @@ async function confirmSharePantry() {
 
     shareSuccess.value = 'Despensa compartida con éxito'
     shareError.value = null
+    shareEmail.value = ''
+
+    // Recargar la lista de usuarios compartidos
+    await loadSharedUsers(sharingPantry.value.id)
   } catch (e: any) {
-    shareError.value = e.message || 'Error al compartir despensa'
+    if (e.status === 404) {
+      shareError.value = 'Usuario no encontrado'
+    } else if (e.status === 409) {
+      shareError.value = 'Esta despensa ya está compartida con ese usuario'
+    } else {
+      shareError.value = e.message || 'Error al compartir despensa'
+    }
   }
 }
 
@@ -480,6 +555,21 @@ function cancelSharePantry() {
   shareEmail.value = ''
   shareError.value = null
   shareSuccess.value = null
+  sharedUsersList.value = []
+}
+
+async function revokeUserAccess(user: SharedUser) {
+  try {
+    if (!sharingPantry.value) return
+
+    await revokeSharePantry(sharingPantry.value.id, user.id)
+
+    // Actualizar lista de usuarios compartidos
+    await loadSharedUsers(sharingPantry.value.id)
+  } catch (e: any) {
+    console.error('Error al revocar acceso:', e)
+    shareError.value = e.message || 'Error al revocar acceso'
+  }
 }
 </script>
 
@@ -626,5 +716,72 @@ function cancelSharePantry() {
   background: #e8f5e9;
   border-radius: 4px;
   border-left: 3px solid #2ecc71;
+}
+.shared-users-section {
+  margin-top: 16px;
+}
+.shared-users-section h4 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #333;
+}
+.shared-users-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.shared-user-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+.shared-user-item:last-child {
+  border-bottom: none;
+}
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.user-icon {
+  font-size: 20px;
+}
+.user-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.user-name {
+  font-weight: 500;
+  color: #111;
+}
+.user-email {
+  font-size: 14px;
+  color: #555;
+}
+.loading-users {
+  text-align: center;
+  color: #999;
+  font-size: 16px;
+  padding: 12px 0;
+}
+.empty-users {
+  text-align: center;
+  color: #999;
+  font-size: 16px;
+  padding: 12px 0;
+}
+.revoke-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-left: auto;
+  color: #e74c3c;
+  transition: color 0.2s;
+}
+.revoke-btn:hover {
+  color: #c0392b;
 }
 </style>
