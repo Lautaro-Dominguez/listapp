@@ -208,7 +208,7 @@ import { ref, onMounted } from 'vue'
 import { getPantries, createPantry, updatePantry, deletePantry, getPantryItems, createPantryItem, updatePantryItem, deletePantryItem, sharePantry, getSharedUsers, revokeSharePantry } from '@/utils/api'
 
 type Item = { id: number; label: string; emoji?: string }
-type ItemQty = Item & { qty: number; productId?: number }
+type ItemQty = Item & { qty: number; productId?: number; unit: string }
 type Pantry = {
   id: number
   title: string
@@ -428,13 +428,17 @@ async function confirmAddItemForm({ productId, quantity }: { productId: number; 
     if (existingItem) {
       // If exists, just increase the quantity
       const newQty = existingItem.qty + quantity
-      const updated = await updatePantryItem(pantry.id, existingItem.id, { quantity: newQty })
+      const updated = await updatePantryItem(pantry.id, existingItem.id, {
+        quantity: newQty,
+        unit: existingItem.unit || 'unidades' // Mantener la unidad existente o usar 'unidades' por defecto
+      })
       existingItem.qty = updated.quantity || newQty
     } else {
       // If not exists, create new item in pantry
       const created = await createPantryItem(pantry.id, {
         product: { id: productId },
         quantity: quantity,
+        unit: 'unidades', // Campo obligatorio - unidad por defecto
         metadata: {}
       })
 
@@ -445,7 +449,8 @@ async function confirmAddItemForm({ productId, quantity }: { productId: number; 
         label: created.product?.name || 'Producto',
         emoji: createdEmoji,
         qty: created.quantity || quantity,
-        productId: created.product?.id
+        productId: created.product?.id,
+        unit: created.unit || 'unidades'
       })
     }
 
@@ -454,6 +459,7 @@ async function confirmAddItemForm({ productId, quantity }: { productId: number; 
     // Handle different error codes from API
     if (e.status === 400) {
       error.value = 'Datos inválidos. Verifica la información del producto.'
+      console.error('Error 400 details:', e)
     } else if (e.status === 401) {
       error.value = 'No tienes autorización para agregar productos a esta despensa.'
     } else if (e.status === 404) {
@@ -541,7 +547,10 @@ async function incQty(pantry: Pantry, item: Item) {
   const itemQty = item as ItemQty
   const newQty = itemQty.qty + 1
   try {
-    await updatePantryItem(pantry.id, itemQty.id, { quantity: newQty })
+    await updatePantryItem(pantry.id, itemQty.id, {
+      quantity: newQty,
+      unit: itemQty.unit || 'unidades'
+    })
     itemQty.qty = newQty
   } catch (e: any) {
     error.value = e.message || 'Error al actualizar cantidad'
@@ -556,7 +565,10 @@ async function decQty(pantry: Pantry, item: Item) {
     await removeItem(pantry, itemQty)
   } else {
     try {
-      await updatePantryItem(pantry.id, itemQty.id, { quantity: newQty })
+      await updatePantryItem(pantry.id, itemQty.id, {
+        quantity: newQty,
+        unit: itemQty.unit || 'unidades'
+      })
       itemQty.qty = newQty
     } catch (e: any) {
       error.value = e.message || 'Error al actualizar cantidad'
