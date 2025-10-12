@@ -15,7 +15,7 @@
           Cargando listas...
         </div>
         <div v-else-if="displayedOwnLists.length === 0" class="empty-lists">
-          No hay listas.
+          No hay listas
         </div>
         <div v-else class="grid">
           <CollapsibleList
@@ -50,7 +50,6 @@
                 <v-icon size="22" icon="mdi-pencil-outline" />
               </button>
               <button class="icon-btn" aria-label="Compartir" @click="openShareList(list)">
-              <button class="icon-btn" aria-label="Compartir" @click="openShareList(list)">
                 <v-icon size="22" icon="mdi-share-variant-outline" />
               </button>
               <button class="icon-btn" aria-label="Eliminar lista" @click="openDeleteListConfirm(list)">
@@ -82,7 +81,7 @@
           Cargando listas recurrentes...
         </div>
         <div v-else-if="displayedRecurringLists.length === 0" class="empty-lists">
-          No hay listas recurrentes.
+          No hay listas recurrentes
         </div>
         <div v-else class="grid">
           <CollapsibleList
@@ -148,7 +147,7 @@
           Cargando listas compartidas...
         </div>
         <div v-else-if="displayedSharedLists.length === 0" class="empty-lists">
-          No hay listas compartidas.
+          No hay listas compartidas
         </div>
         <div v-else class="grid">
           <CollapsibleList
@@ -172,8 +171,7 @@
             <template #item-right="{ item }">
               <ItemQtyActions
                 :item="item as ItemQty"
-                :onInc="() => incQty(list, item as any)"
-                :onDec="() => decQty(list, item as any)"
+                :readonly="true"
               />
             </template>
             <template #empty>{{ hasQuery ? 'Sin coincidencias' : 'No hay productos' }}</template>

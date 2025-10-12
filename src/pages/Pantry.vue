@@ -93,8 +93,7 @@
             <template #item-right="{ item }">
               <ItemQtyActions
                 :item="item as ItemQty"
-                :onInc="() => incQty(pantry, item as any)"
-                :onDec="() => decQty(pantry, item as any)"
+                :readonly="true"
               />
             </template>
             <template #empty>{{ hasQuery ? 'Sin coincidencias' : 'No hay productos' }}</template>
