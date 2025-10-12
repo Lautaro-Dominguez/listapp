@@ -18,11 +18,25 @@
             :items="cat.items"
             v-model:collapsed="cat.collapsed"
             @add="() => openAddProduct(cat.id)"
-            @edit="() => editCategory(cat)"
-            @remove="(item) => removeItem(cat, item)"
-            @edit-item="(item) => openEditProduct(cat, item)"
+            @edit="() => editCategory()"
+            @remove="(item) => removeItem(cat, item as any)"
+            @edit-item="(item) => openEditProduct(cat, item as any)"
             @update:title="(newTitle) => updateCategoryTitle(cat, newTitle)"
           >
+            <template #header-actions="{ toggle, collapsed, startEdit }">
+              <button class="icon-btn" aria-label="Agregar" @click="openAddProduct(cat.id)">
+                <v-icon size="22" icon="mdi-plus" />
+              </button>
+              <button class="icon-btn" aria-label="Editar" @click="startEdit()">
+                <v-icon size="22" icon="mdi-pencil-outline" />
+              </button>
+              <button class="icon-btn" aria-label="Eliminar categoría" @click="deleteCategoryHandler(cat)">
+                <v-icon size="22" icon="mdi-trash-can-outline" />
+              </button>
+              <button class="icon-btn" :aria-label="collapsed ? 'Expandir' : 'Contraer'" @click="toggle()">
+                <v-icon size="22" :icon="collapsed ? 'mdi-chevron-down' : 'mdi-chevron-up'" />
+              </button>
+            </template>
             <template #item-left="{ item }">
               <span class="emoji">{{ item.emoji || cat.emoji }}</span>
             </template>
@@ -54,13 +68,16 @@
   </BaseLayout>
 </template>
 
+
+
 <script setup lang="ts">
+
 import BaseLayout from "@/layouts/BaseLayout.vue";
 import CollapsibleList from '@/components/lists/CollapsibleList.vue'
 import NewProductForm from '@/components/NewProductForm.vue'
 import NewCategoryForm from '@/components/NewCategoryForm.vue'
 import { ref, onMounted } from 'vue'
-import { getProducts, createProduct, updateProduct, deleteProduct, getCategories, createCategory, updateCategory } from '@/utils/api'
+import { getProducts, createProduct, updateProduct, deleteProduct, getCategories, createCategory, updateCategory, deleteCategory } from '@/utils/api'
 
 type Item = { id: number; label: string; emoji: string }
 interface Category { id: number; title: string; emoji: string; items: Item[]; collapsed: boolean }
@@ -82,7 +99,7 @@ async function fetchCategoriesAndProducts() {
       getCategories({ page: 1, per_page: 100, order: 'ASC', sort_by: 'createdAt' }),
       getProducts({ page: 1, per_page: 100, order: 'ASC', sort_by: 'name' })
     ])
-    // Build categories map
+    //Mapa de categorias
     const map = new Map<number, Category>()
     for (const c of cats as any[]) {
       map.set(c.id, { id: c.id, title: c.name, emoji: '📦', items: [], collapsed: false })
@@ -148,7 +165,7 @@ function cancelAddCategory() {
   showAddCategory.value = false
 }
 
-function editCategory(cat: any) { /* reserved for future */ }
+function editCategory() {}
 async function removeItem(cat: any, item: Item) {
   const index = categories.value.findIndex(c => c.id === cat.id)
   if (index !== -1 && categories.value[index]?.items) {
@@ -196,6 +213,32 @@ async function updateCategoryTitle(cat: Category, newTitle: string) {
     if (category) category.title = updated.name
   } catch (e: any) {
     error.value = e.message || 'Error al actualizar categoría'
+  }
+}
+
+async function deleteCategoryHandler(cat: Category) {
+  const confirmed = window.confirm(`¿Eliminar la categoría "${cat.title}"?`)
+  if (!confirmed) return
+  try {
+    await deleteCategory(cat.id)
+    categories.value = categories.value.filter(c => c.id !== cat.id)
+
+    if (addProductTarget.value === cat.id) {
+      addProductTarget.value = null
+      showAddProduct.value = false
+    }
+    if (editProductTarget.value && editProductTarget.value.catId === cat.id) {
+      editProductTarget.value = null
+      showEditProduct.value = false
+    }
+  } catch (e: any) {
+    if (e.status === 409) {
+      error.value = 'No se puede eliminar la categoría porque tiene productos asociados'
+    } else if (e.status === 404) {
+      error.value = 'La categoría no existe o no te pertenece'
+    } else {
+      error.value = e.message || 'Error al eliminar categoría'
+    }
   }
 }
 </script>
