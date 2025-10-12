@@ -14,7 +14,7 @@
       </div>
       <div class="header-actions">
         <!-- botones de la lista: agregar, editar, expandir lista -->
-        <slot name="header-actions" :toggle="toggle" :collapsed="localCollapsed">
+        <slot name="header-actions" :toggle="toggle" :collapsed="localCollapsed" :startEdit="startEditTitle">
           <button class="icon-btn" aria-label="Agregar" @click="$emit('add')">
             <v-icon size="22" icon="mdi-plus" />
           </button>
@@ -179,6 +179,26 @@ function itemKey(item: ListItem) {
   display: flex;
   gap: 10px;
 }
+
+/* se mantiene el mismo estilo de los botones para cada pagina */
+:deep(.header-actions .icon-btn) {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: #9bd166;
+  color: #1f1f1f;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,0.08);
+  font-family: 'Crete Round', serif;
+  font-weight: 700;
+  transition: background 0.2s, color 0.2s;
+}
+:deep(.header-actions .icon-btn:hover) { background: #a3c86d; }
+:deep(.header-actions .icon-btn:active) { background: #b7d88a; }
 
 .icon-btn.soft {
   background: #fff;
