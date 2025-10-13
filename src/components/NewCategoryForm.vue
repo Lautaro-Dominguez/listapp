@@ -1,8 +1,8 @@
 <template>
   <div class="modal-bg">
     <div class="modal">
-      <h3>{{ title || 'Nueva categoría' }}</h3>
-      <label>Nombre:<input v-model="localName" :placeholder="placeholder || 'Nombre de la categoría'" /></label>
+      <h3>Nueva despensa</h3>
+      <label>Nombre:<input v-model="localName" placeholder="Nombre de la despensa" /></label>
       <div class="modal-actions">
         <button @click="onAdd">Agregar</button>
         <button @click="$emit('cancel')">Cancelar</button>
