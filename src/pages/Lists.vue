@@ -4,7 +4,6 @@
       <div class="searchbar-container">
         <SearchBar v-model="query" placeholder="Buscar listas" />
       </div>
-      <!-- Mis Listas -->
       <section class="section">
         <h2 class="section-title">Listas</h2>
         <button class="fab-add-list" @click="showAddList = true">
@@ -327,12 +326,10 @@ const sharedUsersList = ref<SharedUser[]>([])
 const loadingSharedUsers = ref(false)
 const sharingInProgress = ref(false)
 
-// Global products lookup para evitar múltiples llamadas a la API
 const productsLookup = ref(new Map())
 
 const addItemTargetId = ref<number | null>(null)
 
-// Search state
 const query = ref('')
 const hasQuery = computed(() => query.value.trim().length > 0)
 
@@ -376,20 +373,16 @@ async function fetchLists() {
   loading.value = true
   error.value = null
   try {
-    // Cargar productos una sola vez para usar como lookup
     const allProducts = await getProducts({ page: 1, per_page: 1000 })
     productsLookup.value.clear()
     allProducts.forEach((product: any) => {
       productsLookup.value.set(product.id, product)
     })
 
-    // Fetch own lists
     const ownListsData = await getShoppingLists({ owner: true })
     
-    // Fetch shared lists
     const sharedListsData = await getShoppingLists({ owner: false })
 
-    // Cargar items para listas propias
     const ownListsWithItems = await Promise.all(
       ownListsData.map(async (list: any) => {
         try {
@@ -401,7 +394,6 @@ async function fetchLists() {
           })
 
           const items = (itemsResponse.data || []).map((item: any) => {
-            // Buscar datos del producto en el lookup
             const productData = productsLookup.value.get(item.productId) || item.product
             
             return {
@@ -438,7 +430,6 @@ async function fetchLists() {
       })
     )
 
-    // Cargar items para listas compartidas
     const sharedListsWithItems = await Promise.all(
       sharedListsData.map(async (list: any) => {
         try {
@@ -450,7 +441,6 @@ async function fetchLists() {
           })
 
           const items = (itemsResponse.data || []).map((item: any) => {
-            // Buscar datos del producto en el lookup
             const productData = productsLookup.value.get(item.productId) || item.product
             
             return {
@@ -558,10 +548,8 @@ async function confirmAddItemForm({ productId, quantity }: { productId: number; 
         metadata: {}
       })
 
-      // La API retorna {item: {...}} en lugar de directamente el item
       const itemData = created.item || created
       
-      // Buscar datos del producto en el lookup
       const productData = productsLookup.value.get(productId)
       
       list.items.push({
@@ -598,7 +586,6 @@ async function confirmAddItemForm({ productId, quantity }: { productId: number; 
   addItemTargetId.value = null
 }
 
-// Agrega un producto a la lista actualmente seleccionada
 async function addSingleToList(listId: number, productId: number, quantity: number) {
   let list = ownLists.value.find(l => l.id === listId)
   if (!list) {
@@ -615,10 +602,8 @@ async function addSingleToList(listId: number, productId: number, quantity: numb
   } else {
     const created = await createListItem(list.id, { product: { id: productId }, quantity, unit: 'unidades', metadata: {} })
     
-    // La API retorna {item: {...}} en lugar de directamente el item
     const itemData = created.item || created
-    
-    // Buscar datos del producto en el lookup
+  
     const productData = productsLookup.value.get(productId)
     
     const newItem = {
@@ -634,7 +619,6 @@ async function addSingleToList(listId: number, productId: number, quantity: numb
   }
 }
 
-// Procesa varios productos emitidos desde el modal en serie para evitar errores de concurrencia
 async function confirmAddItems(payload: { items: { productId: number; quantity: number }[] }) {
   if (addItemTargetId.value === null) return
   const listId = addItemTargetId.value
@@ -665,9 +649,6 @@ async function removeItem(list: List, item: ItemQty) {
   }
 }
 
-function editList(_list: List) {
-  // Inline editing handled by CollapsibleList via startEdit and @update:title
-}
 
 async function updateListTitle(list: List, newTitle: string) {
   try {
@@ -691,7 +672,7 @@ async function incQty(list: List, item: Item) {
       unit: itemQty.unit || 'unidades'
     })
     itemQty.qty = updated.quantity !== undefined ? updated.quantity : newQty
-    await nextTick() // Force Vue reactivity update
+    await nextTick() 
   } catch (e: any) {
     error.value = e.message || 'Error al actualizar cantidad'
   }
@@ -710,7 +691,7 @@ async function decQty(list: List, item: Item) {
         unit: itemQty.unit || 'unidades'
       })
       itemQty.qty = updated.quantity !== undefined ? updated.quantity : newQty
-      await nextTick() // Force Vue reactivity update
+      await nextTick() 
     } catch (e: any) {
       error.value = e.message || 'Error al actualizar cantidad'
     }
@@ -746,7 +727,6 @@ async function toggleRecurring(list: List) {
   
   try {
     await updateShoppingList(list.id, { recurring: newRecurringValue })
-    // Actualizar el estado local
     list.recurring = newRecurringValue
   } catch (e: any) {
     error.value = e.message || 'Error al actualizar lista'
@@ -834,7 +814,6 @@ async function revokeUserAccess(user: SharedUser) {
 async function purchaseList(list: List) {
   try {
     await markListAsPurchased(list.id, {})
-    // You might want to refresh the list or update its state here
   } catch (e: any) {
     error.value = e.message || 'Error al marcar lista como comprada'
   }
@@ -843,7 +822,6 @@ async function purchaseList(list: List) {
 async function resetList(list: List) {
   try {
     await resetShoppingList(list.id)
-    // You might want to refresh the list or update its state here
   } catch (e: any) {
     error.value = e.message || 'Error al reiniciar lista'
   }
@@ -852,7 +830,6 @@ async function resetList(list: List) {
 async function moveItemsToPantry(list: List) {
   try {
     await moveListItemsToPantry(list.id)
-    // You might want to refresh both the list and pantry here
   } catch (e: any) {
     error.value = e.message || 'Error al mover items a la despensa'
   }
@@ -1105,18 +1082,18 @@ async function moveItemsToPantry(list: List) {
   line-height: 1.4;
 }
 .btn-delete {
-  background: #e74c3c !important;
-  color: #fff !important;
+  background: #e74c3c ;
+  color: #fff ;
 }
 .btn-delete:hover {
-  background: #c0392b !important;
+  background: #c0392b ;
 }
 .btn-cancel {
-  background: #eee !important;
-  color: #222 !important;
+  background: #eee ;
+  color: #222 ;
 }
 .btn-cancel:hover {
-  background: #ddd !important;
+  background: #ddd ;
 }
 .sharing-progress {
   display: flex;

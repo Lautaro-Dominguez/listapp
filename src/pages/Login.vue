@@ -72,7 +72,6 @@ const togglePasswordVisibility = () => {
 }
 
 const handleLogin = async () => {
-    // Validaciones básicas
     if (!email.value || !password.value) {
         errorMessage.value = 'Por favor complete todos los campos'
         return
@@ -96,14 +95,11 @@ const handleLogin = async () => {
         if (response.status === 200) {
             const data = await response.json()
             
-            // Almacenar el token en Pinia
             authStore.setToken(data.token)
             
-            // Limpiar formulario
             email.value = ''
             password.value = ''
             
-            // Redirigir al home
             router.push('/')
             
         } else if (response.status === 400) {
@@ -183,9 +179,8 @@ const handleLogin = async () => {
     color: #333333;
 }
 
-/* Alertas de error */
 .mb-4 {
-    margin-bottom: 20px !important;
+    margin-bottom: 20px;
     width: 75%;
 }
 

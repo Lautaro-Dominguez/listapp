@@ -72,7 +72,6 @@
             @cancel="cancelEditProduct"
           />
         </div>
-        <!-- Reusable delete modal for Category -->
         <ConfirmDeleteModal
           v-if="showDeleteCategoryConfirm"
           title="Eliminar Categoría"
@@ -116,7 +115,7 @@ const error = ref<string | null>(null)
 const showDeleteCategoryConfirm = ref(false)
 const deletingCategory = ref<Category | null>(null)
 
-// búsqueda
+
 const searchQuery = ref('')
 const normalize = (s: string) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
@@ -142,7 +141,6 @@ async function fetchCategoriesAndProducts() {
       getCategories({ page: 1, per_page: 100, order: 'ASC', sort_by: 'createdAt' }),
       getProducts({ page: 1, per_page: 100, order: 'ASC', sort_by: 'name' })
     ])
-    //Mapa de categorias
     const map = new Map<number, Category>()
     for (const c of cats as any[]) {
       map.set(c.id, { id: c.id, title: c.name, emoji: '📦', items: [], collapsed: false })
@@ -236,7 +234,6 @@ async function confirmEditProductForm({ name, emoji }: { name: string; emoji: st
       category: { id: cat.id },
       metadata: emoji ? { emoji } : {}
     })
-    // local update para reflejar los cambios ni bien se hacen
     prod.label = name
     if (emoji) {
       prod.emoji = emoji

@@ -102,18 +102,18 @@ const props = defineProps<Props>()
   line-height: 1.4;
 }
 .btn-delete {
-  background: #e74c3c !important;
-  color: #fff !important;
+  background: #e74c3c ;
+  color: #fff;
 }
 .btn-delete:hover {
-  background: #c0392b !important;
+  background: #c0392b ;
 }
 .btn-cancel {
-  background: #eee !important;
-  color: #222 !important;
+  background: #eee ;
+  color: #222;
 }
 .btn-cancel:hover {
-  background: #ddd !important;
+  background: #ddd ;
 }
 </style>
 

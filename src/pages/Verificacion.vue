@@ -60,10 +60,6 @@ const isResending = ref(false)
 const errorMessage = ref('')
 const successMessage = ref('')
 
-const resendCode = () => {
-    // Función antigua, ya no se usa
-}
-
 const handleResendCode = async () => {
     if (!email.value) {
         errorMessage.value = 'No se pudo obtener el email para reenviar el código'
@@ -119,11 +115,9 @@ const handleVerification = async () => {
             successMessage.value = 'Cuenta verificada exitosamente. Redirigiendo al login...'
             verificationCode.value = ''
             
-            // Limpiar sessionStorage
             sessionStorage.removeItem('registration-email')
             sessionStorage.removeItem('recovery-email')
             
-            // Redirigir al login después de 2 segundos
             setTimeout(() => {
                 router.push('/login')
             }, 2000)
@@ -146,7 +140,6 @@ const handleVerification = async () => {
     }
 }
 
-// Obtener email del sessionStorage al montar el componente
 onMounted(() => {
     const storedEmail = sessionStorage.getItem('registration-email') || sessionStorage.getItem('recovery-email')
     if (storedEmail) {
@@ -232,13 +225,12 @@ onMounted(() => {
     color: #666666;
 }
 
-/* Alertas de error y éxito */
+
 .mb-4 {
-    margin-bottom: 20px !important;
+    margin-bottom: 20px ;
     width: 75%;
 }
 
-/* 5. Botón verificar */
 .verification-btn {
     background-color: #8CC94F;
     color: #666666;

@@ -12,7 +12,6 @@
       </div>
 
       <div v-else class="products-container">
-        <!-- Mostrar productos por categoría -->
         <div v-for="category in categories" :key="category.id" class="category-section">
           <h4 class="category-title">{{ category.title }}</h4>
           <div class="products-grid">
@@ -33,7 +32,6 @@
         </div>
       </div>
 
-      <!-- Carrito de productos seleccionados -->
       <div v-if="selectedProducts.length > 0" class="selected-section">
         <h4>Productos seleccionados:</h4>
         <div class="selected-list">
@@ -95,7 +93,6 @@ async function fetchCategoriesAndProducts() {
       getProducts({ page: 1, per_page: 100, order: 'ASC', sort_by: 'name' })
     ])
 
-    // Build categories map
     const map = new Map<number, Category>()
     for (const c of cats as any[]) {
       map.set(c.id, { id: c.id, title: c.name, items: [] })
@@ -149,7 +146,6 @@ function confirmAdd() {
     return
   }
 
-  // Emitir todos los productos seleccionados en un solo evento (cantidad fija = 1)
   const items = selectedProducts.value.map(item => ({ productId: item.productId, quantity: 1 }))
   emit('addMultiple', { items })
 }
@@ -265,8 +261,6 @@ onMounted(fetchCategoriesAndProducts)
   word-wrap: break-word;
   max-width: 100%;
 }
-
-/* quantity badge removed: selection always adds with quantity = 1 in despensa */
 
 .selected-indicator {
   position: absolute;

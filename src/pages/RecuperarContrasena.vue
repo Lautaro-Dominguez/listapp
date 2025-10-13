@@ -68,7 +68,6 @@ const handleForgotPassword = async () => {
         return
     }
 
-    // Validación básica de email
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email.value)) {
         errorMessage.value = 'Por favor ingrese un correo electrónico válido'
@@ -82,10 +81,8 @@ const handleForgotPassword = async () => {
         
         successMessage.value = 'Se ha enviado un código de recuperación a su correo electrónico'
         
-        // Guardar email en sessionStorage para la siguiente página
         sessionStorage.setItem('recovery-email', email.value.trim())
         
-        // Redirigir a la página de reset después de un tiempo
         setTimeout(() => {
             router.push('/reset-password')
         }, 2000)
@@ -163,7 +160,7 @@ const handleForgotPassword = async () => {
 }
 
 .mb-4 {
-    margin-bottom: 20px !important;
+    margin-bottom: 20px;
     width: 75%;
 }
 

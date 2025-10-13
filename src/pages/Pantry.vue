@@ -4,7 +4,6 @@
       <div class="searchbar-container">
         <SearchBar v-model="query" placeholder="Buscar despensas" />
       </div>
-      <!-- Mis Despensas -->
       <section class="section">
         <h2 class="section-title">Despensas</h2>
         <button class="fab-add-pantry" @click="showAddPantry = true">
@@ -247,7 +246,6 @@ const sharedUsersList = ref<SharedUser[]>([])
 const loadingSharedUsers = ref(false)
 const sharingInProgress = ref(false)
 
-// Search state
 const query = ref('')
 const hasQuery = computed(() => query.value.trim().length > 0)
 
@@ -500,7 +498,6 @@ async function confirmAddItemForm({ productId, quantity }: { productId: number; 
   addItemTargetId.value = null
 }
 
-// Agrega un producto a la despensa actualmente seleccionada
 async function addSingleToPantry(pantryId: number, productId: number, quantity: number) {
   let pantry = ownPantries.value.find(p => p.id === pantryId)
   if (!pantry) {
@@ -530,7 +527,6 @@ async function addSingleToPantry(pantryId: number, productId: number, quantity: 
   }
 }
 
-// Procesa varios productos emitidos desde el modal en serie para evitar errores de concurrencia
 async function confirmAddItems(payload: { items: { productId: number; quantity: number }[] }) {
   if (addItemTargetId.value === null) return
   const pantryId = addItemTargetId.value
@@ -562,9 +558,6 @@ async function removeItem(pantry: Pantry, item: ItemQty) {
   }
 }
 
-function editPantry(_pantry: Pantry) {
-  // Inline editing handled by CollapsibleList via startEdit and @update:title
-}
 
 async function updatePantryTitle(pantry: Pantry, newTitle: string) {
   try {
@@ -957,18 +950,18 @@ async function revokeUserAccess(user: SharedUser) {
   line-height: 1.4;
 }
 .btn-delete {
-  background: #e74c3c !important;
-  color: #fff !important;
+  background: #e74c3c ;
+  color: #fff ;
 }
 .btn-delete:hover {
-  background: #c0392b !important;
+  background: #c0392b ;
 }
 .btn-cancel {
-  background: #eee !important;
-  color: #222 !important;
+  background: #eee ;
+  color: #222 ;
 }
 .btn-cancel:hover {
-  background: #ddd !important;
+  background: #ddd ;
 }
 .sharing-progress {
   display: flex;

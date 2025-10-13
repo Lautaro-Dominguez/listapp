@@ -34,7 +34,7 @@ function onAdd() {
   if (!localName.value.trim()) return
   emit('submit', { 
     name: localName.value.trim(),
-    description: '', // Siempre enviamos una descripción vacía
+    description: '', 
     recurring: false,
     metadata: {}
   })

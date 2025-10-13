@@ -40,14 +40,12 @@ const localSurname = ref('')
 const localNickname = ref('')
 const isLoading = ref(false)
 
-// Inicializar con los valores actuales
 onMounted(() => {
   localName.value = props.name
   localSurname.value = props.surname
   localNickname.value = props.nickname
 })
 
-// Actualizar si cambian las props
 watch(() => props.name, (val) => { localName.value = val })
 watch(() => props.surname, (val) => { localSurname.value = val })
 watch(() => props.nickname, (val) => { localNickname.value = val })
@@ -67,7 +65,6 @@ function onSave() {
   })
 }
 
-// Exponer función para resetear loading desde el padre
 defineExpose({
   resetLoading: () => {
     isLoading.value = false

@@ -137,7 +137,6 @@ function cancelEditTitle() {
   editableTitle.value = localTitle.value
 }
 
-// Obtiene la clave única de cada producto
 function itemKey(item: ListItem) {
   const keyField = props.itemKeyField as keyof ListItem
   return (keyField && (item[keyField] as string | number | undefined)) ?? item.label
@@ -180,7 +179,6 @@ function itemKey(item: ListItem) {
   gap: 10px;
 }
 
-/* se mantiene el mismo estilo de los botones para cada pagina */
 :deep(.header-actions .icon-btn) {
   width: 40px;
   height: 40px;
@@ -240,7 +238,6 @@ function itemKey(item: ListItem) {
   background: #b7d88a;
 }
 
-/* contenedor de items */
 .items {
   list-style: none;
   padding: 12px;
@@ -249,7 +246,6 @@ function itemKey(item: ListItem) {
   border-radius: 14px;
 }
 
-/* tarjeta de cada item */
 .item {
   display: grid;
   grid-template-columns: 48px 1fr auto;

@@ -112,11 +112,6 @@ const validateForm = () => {
         return false
     }
 
-    if (newPassword.value.length < 6) {
-        errorMessage.value = 'La nueva contraseña debe tener al menos 6 caracteres'
-        return false
-    }
-
     if (newPassword.value !== repeatNewPassword.value) {
         errorMessage.value = 'Las nuevas contraseñas no coinciden'
         return false
@@ -138,7 +133,6 @@ const handleChangePassword = async () => {
         return
     }
 
-    // Verificar que el usuario esté autenticado
     if (!authStore.isAuthenticated) {
         errorMessage.value = 'Debe iniciar sesión para cambiar la contraseña'
         router.push('/login')
@@ -152,12 +146,10 @@ const handleChangePassword = async () => {
         
         successMessage.value = 'Contraseña cambiada exitosamente'
         
-        // Limpiar formulario
         currentPassword.value = ''
         newPassword.value = ''
         repeatNewPassword.value = ''
         
-        // Redirigir después de un tiempo
         setTimeout(() => {
             router.push('/')
         }, 2000)
@@ -236,7 +228,7 @@ const handleChangePassword = async () => {
 }
 
 .mb-4 {
-    margin-bottom: 20px !important;
+    margin-bottom: 20px;
     width: 75%;
 }
 

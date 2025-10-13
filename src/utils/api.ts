@@ -1,7 +1,5 @@
-// API Base URL Configuration
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080').replace(/\/$/, '')
 
-// API Endpoints
 export const API_ENDPOINTS = {
   REGISTER: '/api/users/register',
   VERIFY_ACCOUNT: '/api/users/verify-account',
@@ -19,24 +17,18 @@ export const API_ENDPOINTS = {
   SHOPPING_LISTS: '/api/shopping-lists'
 }
 
-// Helper function to build full API URLs
 export const buildApiUrl = (endpoint: string): string => {
-  // If endpoint is already absolute, return as-is
   if (/^https?:\/\//i.test(endpoint)) return endpoint
-  // If API_BASE_URL is empty, assume same-origin
   if (!API_BASE_URL) return endpoint
   return `${API_BASE_URL}${endpoint}`
 }
 
 async function parseJsonSafe(res: Response): Promise<any> {
-  // No Content
   if (res.status === 204) return null
   const ctype = (res.headers.get('content-type') || '').toLowerCase()
-  // Try to parse as JSON when content-type indicates JSON
   if (ctype.includes('application/json')) {
     try { return await res.json() } catch { /* fallthrough to text */ }
   }
-  // Fallback: read as text and try to parse JSON heuristically
   try {
     const text = await res.text()
     const trimmed = text.trim()
@@ -73,12 +65,10 @@ function normalizePaginatedResponse<T = any>(payload: any): { data: T[]; meta?: 
   return { data: [] }
 }
 
-// Simple per-key serial execution queue to avoid backend concurrency issues (e.g., SQLite savepoints)
 const __serialQueues: Record<string, Promise<any>> = {}
 function enqueueSerial<T>(key: string, task: () => Promise<T>): Promise<T> {
   const last = __serialQueues[key] || Promise.resolve()
   const next = last.catch(() => undefined).then(task)
-  // Ensure chain continues regardless of outcome
   __serialQueues[key] = next.then(
     () => undefined,
     () => undefined
@@ -161,7 +151,6 @@ export async function deleteCategory(id: number) {
   return apiRequest(`${API_ENDPOINTS.CATEGORIES}/${id}`, { method: 'DELETE' })
 }
 
-// User Profile API
 export async function getUserProfile() {
   return apiRequest(API_ENDPOINTS.PROFILE, {
     method: 'GET'
@@ -214,7 +203,6 @@ export async function sendVerificationCode(email: string) {
   })
 }
 
-// Pantries API
 export async function getPantries(params: Record<string, any> = {}) {
   const url = new URL(buildApiUrl(API_ENDPOINTS.PANTRIES))
   Object.entries(params).forEach(([k, v]) => {
@@ -270,8 +258,6 @@ export async function revokeSharePantry(pantryId: number, userId: number) {
     method: 'DELETE'
   })
 }
-
-// Pantry Items API
 export async function getPantryItems(pantryId: number, params: Record<string, any> = {}) {
   const url = new URL(buildApiUrl(`${API_ENDPOINTS.PANTRY_ITEMS}/${pantryId}/items`))
   Object.entries(params).forEach(([k, v]) => {
@@ -279,7 +265,6 @@ export async function getPantryItems(pantryId: number, params: Record<string, an
       url.searchParams.append(k, String(v))
     }
   })
-  //  solicitudes de productos en serie
   return enqueueSerial('pantry-items', async () => {
     const result = await apiRequest(url.pathname + url.search, { method: 'GET' })
     return normalizePaginatedResponse(result)
@@ -287,7 +272,6 @@ export async function getPantryItems(pantryId: number, params: Record<string, an
 }
 
 export async function createPantryItem(pantryId: number, data: any) {
-  // Serialización de escrituras por despensa para evitar problemas de transacciones/savepoints concurrentes en SQLite del backend
   return enqueueSerial(`pantry-write-${pantryId}`, async () => {
     return apiRequest(`${API_ENDPOINTS.PANTRY_ITEMS}/${pantryId}/items`, {
       method: 'POST',
@@ -313,7 +297,6 @@ export async function deletePantryItem(pantryId: number, itemId: number) {
   })
 }
 
-// Shopping Lists API
 
 export interface ShoppingList {
   id?: number

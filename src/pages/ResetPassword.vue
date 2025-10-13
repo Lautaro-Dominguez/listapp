@@ -109,11 +109,6 @@ const validateForm = () => {
         return false
     }
 
-    if (password.value.length < 6) {
-        errorMessage.value = 'La contraseña debe tener al menos 6 caracteres'
-        return false
-    }
-
     if (password.value !== repeatPassword.value) {
         errorMessage.value = 'Las contraseñas no coinciden'
         return false
@@ -137,15 +132,12 @@ const handleResetPassword = async () => {
         
         successMessage.value = 'Contraseña restablecida exitosamente. Redirigiendo a iniciar sesión...'
         
-        // Limpiar sessionStorage
         sessionStorage.removeItem('recovery-email')
         
-        // Limpiar formulario
         code.value = ''
         password.value = ''
         repeatPassword.value = ''
-        
-        // Redirigir a login después de un tiempo
+
         setTimeout(() => {
             router.push('/login')
         }, 2000)
@@ -196,12 +188,10 @@ const handleResendCode = async () => {
 }
 
 onMounted(() => {
-    // Obtener email del sessionStorage
     const storedEmail = sessionStorage.getItem('recovery-email')
     if (storedEmail) {
         email.value = storedEmail
     } else {
-        // Si no hay email en sessionStorage, redirigir a recuperar contraseña
         router.push('/recuperar-contraseña')
     }
 })
@@ -263,7 +253,7 @@ onMounted(() => {
 }
 
 .mb-4 {
-    margin-bottom: 20px !important;
+    margin-bottom: 20px;
     width: 75%;
 }
 

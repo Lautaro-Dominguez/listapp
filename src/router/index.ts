@@ -68,7 +68,6 @@ const router = createRouter({
   routes
 })
 
-// Guard para rutas que requieren autenticación
 router.beforeEach((to, from, next) => {
   const protectedRoutes = ['/cambiar-contraseña']
   const token = localStorage.getItem('auth-token')
