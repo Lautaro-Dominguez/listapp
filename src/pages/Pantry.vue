@@ -25,7 +25,6 @@
             v-model:collapsed="pantry.collapsed"
             @add="() => openAddItem(pantry.id)"
             @remove="(item) => removeItem(pantry, item as any)"
-            @edit="() => editPantry(pantry)"
             @update:title="(newTitle) => updatePantryTitle(pantry, newTitle)"
             item-key-field="id"
           >

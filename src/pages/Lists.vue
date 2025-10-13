@@ -25,7 +25,6 @@
             v-model:collapsed="list.collapsed"
             @add="() => openAddItem(list.id)"
             @remove="(item) => removeItem(list, item as any)"
-            @edit="() => editList(list)"
             @update:title="(newTitle) => updateListTitle(list, newTitle)"
             item-key-field="id"
           >
@@ -91,7 +90,6 @@
             v-model:collapsed="list.collapsed"
             @add="() => openAddItem(list.id)"
             @remove="(item) => removeItem(list, item as any)"
-            @edit="() => editList(list)"
             @update:title="(newTitle) => updateListTitle(list, newTitle)"
             item-key-field="id"
           >
