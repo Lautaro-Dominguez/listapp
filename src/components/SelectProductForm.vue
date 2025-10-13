@@ -1,7 +1,7 @@
 <template>
   <div class="modal-bg" @click="$emit('cancel')">
     <div class="modal" @click.stop>
-      <h3>Agregar Productos a la Despensa</h3>
+      <h3>{{ title || 'Agregar Productos' }}</h3>
 
       <div v-if="loading" class="loading">
         Cargando productos...
@@ -70,6 +70,10 @@ import { getCategories, getProducts } from '@/utils/api'
 type Item = { id: number; label: string; emoji: string }
 type Category = { id: number; title: string; items: Item[] }
 type SelectedProduct = { productId: number; label: string; emoji: string }
+
+const props = defineProps<{
+  title?: string
+}>()
 
 const emit = defineEmits<{
   add: [payload: { productId: number; quantity: number }]

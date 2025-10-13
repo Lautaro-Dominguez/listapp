@@ -186,6 +186,7 @@
       />
       <div v-if="showAddItem">
         <SelectProductForm
+          title="Agregar Productos a la Lista"
           @add="confirmAddItemForm"
           @addMultiple="confirmAddItems"
           @cancel="cancelAddItem"

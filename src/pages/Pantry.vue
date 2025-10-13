@@ -103,12 +103,15 @@
 
       <div v-if="showAddPantry">
         <NewCategoryForm
+          title="Nueva despensa"
+          placeholder="Nombre de la despensa"
           @add="confirmAddPantryForm"
           @cancel="cancelAddPantry"
         />
       </div>
       <div v-if="showAddItem">
           <SelectProductForm
+          title="Agregar Productos a la Despensa"
           @add="confirmAddItemForm"
           @addMultiple="confirmAddItems"
           @cancel="cancelAddItem"

@@ -1,8 +1,8 @@
 <template>
   <div class="modal-bg">
     <div class="modal">
-      <h3>Nueva categoría</h3>
-      <label>Nombre:<input v-model="localName" placeholder="Nombre de la categoría" /></label>
+      <h3>{{ title || 'Nueva categoría' }}</h3>
+      <label>Nombre:<input v-model="localName" :placeholder="placeholder || 'Nombre de la categoría'" /></label>
       <div class="modal-actions">
         <button @click="onAdd">Agregar</button>
         <button @click="$emit('cancel')">Cancelar</button>
@@ -12,16 +12,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, defineProps, defineEmits } from 'vue'
+import { ref, watch } from 'vue'
 
-const props = defineProps({
-  name: { type: String, default: '' },
+const props = defineProps<{
+  name?: string
+  title?: string
+  placeholder?: string
+}>()
+
+const emit = defineEmits<{
+  add: [payload: { name: string }]
+  cancel: []
+}>()
+
+const localName = ref(props.name || '')
+
+watch(() => props.name, (val) => { 
+  localName.value = val || '' 
 })
-const emit = defineEmits(['add', 'cancel'])
-
-const localName = ref(props.name)
-
-watch(() => props.name, (val) => { localName.value = val })
 
 function onAdd() {
   if (!localName.value.trim()) return
